@@ -91,8 +91,10 @@ games/
       scenes/Boot/Menu/Game
 
 game-host/
-    Dockerfile            Build: oyunları derler / Runner: statik sunucu
-    server.cjs            sadece /games/... + /healthz, API yok
+    Dockerfile            ortak host: /games/<id>/ altında tüm oyunlar
+    Dockerfile.gem-match  sadece Gem Match → kendi Coolify uygulaması
+    Dockerfile.word-hunt  sadece Kelime Avı → kendi Coolify uygulaması
+    server.cjs            GAME_ID varsa kök dizinde tek oyun, API yok
     README.md             Coolify ve BotFather adımları
 
 scripts/

@@ -16,6 +16,18 @@ deploy'u ile hiçbir bağlantısı yoktur.
 
 (`/healthz` → ok)
 
+## Ayrı uygulamalar (önerilen)
+
+Her oyunun kendi Coolify uygulaması ve kendi Dockerfile'ı var:
+
+| Oyun | Dockerfile | Domain |
+|---|---|---|
+| Gem Match | `game-host/Dockerfile.gem-match` | `https://gemmatch.179.253.91.172.sslip.io/` |
+| Kelime Avı | `game-host/Dockerfile.word-hunt` | `https://kelimeavi.179.253.91.172.sslip.io/` |
+
+Build context yine repo kökü; `GAME_ID` env değeri sadece o oyunu kök dizinde servis eder.
+Eski ortak uygulama (`Dockerfile`) hâlâ `/games/<id>/` altında iki oyunu birden servis eder.
+
 ## Yerel test
 
 ```bash
