@@ -6,8 +6,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY scripts/ensure-esbuild.cjs scripts/ensure-esbuild.cjs
 RUN npm ci --include=dev --no-audit --no-fund
-COPY games/gem-match games/gem-match
-RUN npx vite build --config games/gem-match/vite.config.ts
+COPY games/ games/
+RUN npm run build:games
 
 FROM node:20-alpine AS runner
 WORKDIR /app
