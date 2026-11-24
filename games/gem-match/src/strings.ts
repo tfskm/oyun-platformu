@@ -12,7 +12,7 @@ import {
 } from '../../shared/game-kit/src/index.js';
 
 export const STRINGS: Dict = {
-  'menu.footer': ['Taskonomix Oyunları  •  v0.1', 'Taskonomix Games  •  v0.1'],
+  'menu.footer': ['OYUN PLATFORMU  •  v0.1', 'GAME PLATFORM  •  v0.1'],
   'menu.tagline': ['EŞLEŞTİR  •  PATLAT  •  YÜKSEL', 'MATCH  •  BLAST  •  RISE'],
   'menu.levelLabel': ['BÖLÜM', 'LEVEL'],
   'menu.target': ['Hedef {score} puan  •  {moves} hamle', 'Target {score} pts  •  {moves} moves'],

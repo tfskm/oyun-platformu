@@ -1,6 +1,8 @@
 # Oyun Platformu
 
-Canlı oyun: https://oyun.179.253.91.172.sslip.io/games/gem-match/
+Canlı oyunlar:
+- Gem Match: https://oyun.179.253.91.172.sslip.io/games/gem-match/
+- Kelime Avı: https://oyun.179.253.91.172.sslip.io/games/word-hunt/
 Telegram Mini App: https://t.me/gemmatch_bot/gemmatch  ·  kısa ad: `gemmatch`
 
 Taskonomix'ten **tamamen bağımsız** oyun deposu. Şu anki oyun: **Gem Match**
@@ -15,6 +17,7 @@ kodu burada yok.
 npm install
 npm test           # mantık testi
 npm run dev        # http://localhost:5174/games/gem-match/
+npm run dev:word   # http://localhost:5175/games/word-hunt/
 npm run build      # dist/games/gem-match/
 npm start          # http://localhost:3000/games/gem-match/
 ```

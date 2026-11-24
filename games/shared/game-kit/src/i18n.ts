@@ -64,6 +64,14 @@ export const COMMON: Dict = {
   'common.xpEarned': ['Kazanılan XP', 'XP earned'],
   'common.language': ['Dil', 'Language'],
   'common.languageSwitch': ['Dili değiştir', 'Change language'],
+  'common.time': ['Süre', 'Time'],
+  'common.found': ['Bulunan', 'Found'],
+  'common.words': ['kelime', 'words'],
+  'common.word': ['Kelime', 'Word'],
+  'common.tooShort': ['Çok kısa', 'Too short'],
+  'common.notAWord': ['Geçerli kelime değil', 'Not a valid word'],
+  'common.alreadyFound': ['Bu kelimeyi zaten buldun', 'Already found'],
+  'common.great': ['Harika!', 'Great!'],
 };
 
 const strings: Dict = { ...COMMON };

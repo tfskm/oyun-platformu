@@ -3,7 +3,7 @@
 > Bu dosya, projeye sonradan bakan (insan veya AI) herkesin **hiçbir şey sormadan**
 > devam edebilmesi için yazıldı. Kararlar, kurallar, dosya yapısı ve mevcut durum burada.
 >
-> Son güncelleme: 2026-11-24 · Aşama: **1 (Gem Match bağımsız oyun)**
+> Son güncelleme: 2026-11-24 · Aşama: **2 (Gem Match + Kelime Avı bağımsız oyunlar)**
 >
 > **Bu depo Taskonomix'ten tamamen ayrıdır.** Taskonomix kodu, veritabanı, API'si
 > ve deploy'u burada yoktur. İleride istenirse iki ürün birbirine bağlanabilir;
@@ -78,6 +78,18 @@ games/
       scenes/MenuScene.ts menü, seviye seçimi, profil, TR/EN düğmesi
       scenes/GameScene.ts tahta, animasyon, kombo, sonuç
 
+  word-hunt/
+    index.html / vite.config.ts   port 5175, /games/word-hunt/
+    src/
+      main.ts / theme.ts / telegram.ts / strings.ts
+      core/hex.ts        petek ızgara matematiği (6 komşu, odd-q)
+      core/board.ts      tahta üretimi, kelime gömme, yol kontrolü
+      core/words.ts      TR/EN sözlük setleri
+      core/levels.ts     süre, hedef, min harf, puan
+      data/words.tr.ts   25.772 Türkçe kelime
+      data/words.en.ts   14.441 İngilizce kelime
+      scenes/Boot/Menu/Game
+
 game-host/
     Dockerfile            Build: oyunları derler / Runner: statik sunucu
     server.cjs            sadece /games/... + /healthz, API yok
@@ -85,6 +97,7 @@ game-host/
 
 scripts/
     test-gem-match.mjs    mantık testi (300 oyun simülasyonu)
+    test-word-hunt.mjs    petek/kelime testi (92 kontrol)
     ensure-esbuild.cjs    esbuild binary garantisi
 ```
 
@@ -153,14 +166,28 @@ tarayıcı dili → Türkçe. Sayılar `fmtInt()` ile dile göre biçimlenir.
 
 ---
 
+## 5b. Kelime Avı — teknik özet
+
+| Konu | Detay |
+|---|---|
+| Izgara | 7×8 petek (flat-top hex, odd-q), 6 komşu yön |
+| Girdi | Parmakla komşu harflere doğru çizgi; geri dönerek silinebilir |
+| Kelime | En az 3 / 4 / 5 harf (seviyeye göre), sözlükte olmalı, tekrar edilemez |
+| Sözlük | TR 25.772 kelime (mythes-tr), EN 14.441 kelime (google-20k) |
+| Tahta | Rastgele harfler + 7-16 kelime komşu zincir olarak gömülür; seed deterministik |
+| Puan | `harf² × 10 × kombo × seviye` |
+| Süre | 100 saniyeden başlar, 55 saniyeye kadar düşer |
+| Dil | TR/EN; tahta harfleri ve sözlük dile göre değişir |
+
 ## 6. Komutlar
 
 ```bash
 npm install
 npm run dev        # → http://localhost:5174/games/gem-match/
-npm test           # 300 oyunluk mantık testi
+npm run dev:word   # → http://localhost:5175/games/word-hunt/
+npm test           # iki oyunun mantık testleri
 npm run typecheck  # tip kontrolü
-npm run build      # oyunları dist/games/ altına derler
+npm run build      # iki oyunu dist/games/ altına derler
 npm start          # → http://localhost:3000/games/gem-match/
 ```
 
@@ -174,7 +201,9 @@ GitHub repo: `tfskm/oyun-platformu` → yeni resource → Build pack **Dockerfil
 Build context **/** → Dockerfile **`game-host/Dockerfile`** → Port **3000** →
 domain (örn. `oyun.179.253.91.172.sslip.io`). Detay: `game-host/README.md`.
 
-**Canlı URL (2026-11-24):** https://oyun.179.253.91.172.sslip.io/games/gem-match/
+**Canlı URL'ler:**
+- https://oyun.179.253.91.172.sslip.io/games/gem-match/
+- https://oyun.179.253.91.172.sslip.io/games/word-hunt/
 
 Doğrulama:
 
@@ -224,6 +253,8 @@ Güvenlik: XP sunucuda hesaplanır, bilet tek kullanımlık ve süreli olur.
 | 2026-11-24 | TR/EN dil seçimi (K10) — menüde TR/EN düğmesi. |
 | 2026-11-24 | `game-host`: API'siz bağımsız statik sunucu + Dockerfile. |
 | 2026-11-24 | Ayrı GitHub deposu: `tfskm/oyun-platformu`. |
+| 2026-11-24 | Telegram Mini App: `@gemmatch_bot`, kısa ad `gemmatch`, menü butonu. |
+| 2026-11-24 | Kelime Avı: petek ızgara, TR/EN sözlük, kaydırma ile kelime, seviye/süre/puan. |
 
 ---
 
@@ -231,9 +262,10 @@ Güvenlik: XP sunucuda hesaplanır, bilet tek kullanımlık ve süreli olur.
 
 1. `tfskm/oyun-platformu` deposunu Coolify'a bağla, domain ver, deploy et.
 2. BotFather'da Mini App'i oluştur, telefonda gerçek dokunmayla test et.
-3. Gem Match cilası: seviye geçiş ekranı, ipucu, özel taş kombinasyonları.
-4. Space Runner (aynı şema, `game-kit` tekrar kullanım testi).
-5. İstenirse: Taskonomix ile bağlantı (iki ürün ayrı kalır, API üzerinden konuşur).
+3. Kelime Avı cilası: ipucu düğmesi, kelime açıklaması, günlük görev.
+4. Gem Match cilası: seviye geçiş ekranı, ipucu, özel taş kombinasyonları.
+5. Üçüncü oyun: Space Runner (aynı şema, `game-kit` tekrar kullanım testi).
+6. İstenirse: Taskonomix ile bağlantı (iki ürün ayrı kalır, API üzerinden konuşur).
 
 ---
 

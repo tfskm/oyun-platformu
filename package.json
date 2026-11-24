@@ -7,10 +7,11 @@
   "scripts": {
     "dev": "vite --config games/gem-match/vite.config.ts",
     "dev:game": "vite --config games/gem-match/vite.config.ts",
+    "dev:word": "vite --config games/word-hunt/vite.config.ts",
     "build": "npm run typecheck && npm run build:games",
-    "build:games": "vite build --config games/gem-match/vite.config.ts",
+    "build:games": "vite build --config games/gem-match/vite.config.ts && vite build --config games/word-hunt/vite.config.ts",
     "typecheck": "tsc --noEmit -p games/tsconfig.json",
-    "test": "node scripts/test-gem-match.mjs",
+    "test": "node scripts/test-gem-match.mjs && node scripts/test-word-hunt.mjs",
     "start": "node game-host/server.cjs"
   },
   "devDependencies": {
