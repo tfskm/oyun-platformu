@@ -6,6 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY scripts/ensure-esbuild.cjs scripts/ensure-esbuild.cjs
 RUN npm ci --include=dev --no-audit --no-fund
+COPY tsconfig.json ./
 COPY games/ games/
 RUN npm run build:games
 
