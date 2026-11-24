@@ -1,8 +1,8 @@
 # Oyun Platformu
 
-Canlı oyunlar:
-- Gem Match: https://oyun.179.253.91.172.sslip.io/games/gem-match/
-- Kelime Avı: https://oyun.179.253.91.172.sslip.io/games/word-hunt/
+Canlı oyunlar (her biri kendi Coolify uygulamasında):
+- Gem Match: https://gemmatch.179.253.91.172.sslip.io/
+- Kelime Avı: https://kelimeavi.179.253.91.172.sslip.io/
 Telegram Mini App'leri:
 - Gem Match: https://t.me/gemmatch_bot/gemmatch · kısa ad `gemmatch` · menü: "Oyunu Başlat"
 - Kelime Avı: https://t.me/kelimeavi_bot/kelimeavi · kısa ad `kelimeavi` · menü: "Oyuna Başla"

@@ -203,9 +203,11 @@ GitHub repo: `tfskm/oyun-platformu` → yeni resource → Build pack **Dockerfil
 Build context **/** → Dockerfile **`game-host/Dockerfile`** → Port **3000** →
 domain (örn. `oyun.179.253.91.172.sslip.io`). Detay: `game-host/README.md`.
 
-**Canlı URL'ler:**
-- https://oyun.179.253.91.172.sslip.io/games/gem-match/
-- https://oyun.179.253.91.172.sslip.io/games/word-hunt/
+**Canlı URL'ler (her oyunun kendi Coolify uygulaması):**
+- Gem Match: https://gemmatch.179.253.91.172.sslip.io/
+- Kelime Avı: https://kelimeavi.179.253.91.172.sslip.io/
+
+Eski ortak host hâlâ çalışır: `https://oyun.179.253.91.172.sslip.io/games/<id>/`
 
 Doğrulama:
 
