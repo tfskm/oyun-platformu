@@ -10,6 +10,8 @@ deploy'u ile hiçbir bağlantısı yoktur.
 - SPA fallback yok; bilinmeyen yol = 404
 - `/healthz` → `ok`
 
+**Canlı:** https://oyun.179.253.91.172.sslip.io/games/gem-match/ (`/healthz` → ok)
+
 ## Yerel test
 
 ```bash

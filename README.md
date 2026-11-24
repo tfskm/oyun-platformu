@@ -1,5 +1,7 @@
 # Oyun Platformu
 
+Canlı oyun: https://oyun.179.253.91.172.sslip.io/games/gem-match/
+
 Taskonomix'ten **tamamen bağımsız** oyun deposu. Şu anki oyun: **Gem Match**
 (Telegram Mini App olarak açılabilen, Türkçe/İngilizce, mobil öncelikli).
 

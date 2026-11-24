@@ -174,6 +174,8 @@ GitHub repo: `tfskm/oyun-platformu` → yeni resource → Build pack **Dockerfil
 Build context **/** → Dockerfile **`game-host/Dockerfile`** → Port **3000** →
 domain (örn. `oyun.179.253.91.172.sslip.io`). Detay: `game-host/README.md`.
 
+**Canlı URL (2026-11-24):** https://oyun.179.253.91.172.sslip.io/games/gem-match/
+
 Doğrulama:
 
 ```
