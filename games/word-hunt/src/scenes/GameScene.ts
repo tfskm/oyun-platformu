@@ -220,7 +220,7 @@ export class GameScene extends Phaser.Scene {
     frame.strokeRoundedRect(this.originX - 16, this.originY - 16, size.w + 32, size.h + 32, 24);
 
     // İp peteklerin ÜSTÜNDE, harflerin altında kalsın ki seçim yolu görünsün.
-    this.pathG = this.add.graphics().setDepth(8);
+    this.pathG = this.add.graphics().setDepth(9);
 
     this.wordText = this.add
       .text(W / 2, 1160, '', {
@@ -416,8 +416,8 @@ export class GameScene extends Phaser.Scene {
   private refreshPath(): void {
     this.pathG.clear();
     if (this.path.length >= 2) {
-      // dış yumuşak ışık + ince renkli ip
-      this.pathG.lineStyle(14, 0xff2d55, 0.22);
+      // Tek renk, net kırmızı ip — seçilen peteklerin üstünde, harflerin altında.
+      this.pathG.lineStyle(7, 0xff1744, 1);
       this.pathG.beginPath();
       const first = this.posOf(this.path[0]);
       this.pathG.moveTo(this.originX + first.x, this.originY + first.y);
@@ -426,14 +426,12 @@ export class GameScene extends Phaser.Scene {
         this.pathG.lineTo(this.originX + p.x, this.originY + p.y);
       }
       this.pathG.strokePath();
-      this.pathG.lineStyle(4, 0x6fffe0, 0.98);
-      this.pathG.beginPath();
-      this.pathG.moveTo(this.originX + first.x, this.originY + first.y);
-      for (let k = 1; k < this.path.length; k++) {
-        const p = this.posOf(this.path[k]);
-        this.pathG.lineTo(this.originX + p.x, this.originY + p.y);
+      // Bağlantı noktaları da kırmızı olsun ki yön daha net görünsün.
+      this.pathG.fillStyle(0xff1744, 1);
+      for (const i of this.path) {
+        const p = this.posOf(i);
+        this.pathG.fillCircle(this.originX + p.x, this.originY + p.y, 5);
       }
-      this.pathG.strokePath();
     }
 
     for (let i = 0; i < this.hexViews.length; i++) {
