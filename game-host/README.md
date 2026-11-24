@@ -26,7 +26,8 @@ Her oyunun kendi Coolify uygulaması ve kendi Dockerfile'ı var:
 | Kelime Avı | `game-host/Dockerfile.word-hunt` | `https://kelimeavi.179.253.91.172.sslip.io/` |
 
 Build context yine repo kökü; `GAME_ID` env değeri sadece o oyunu kök dizinde servis eder.
-Eski ortak uygulama (`Dockerfile`) hâlâ `/games/<id>/` altında iki oyunu birden servis eder.
+Eski ortak `oyun` uygulaması kaldırıldı; her oyun kendi container'ında çalışır.
+`Dockerfile` (ortak mod) yalnızca yerel geliştirme/yzdek amaçlı duruyor.
 
 ## Yerel test
 

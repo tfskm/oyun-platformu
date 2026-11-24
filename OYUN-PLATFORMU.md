@@ -207,7 +207,7 @@ domain (örn. `oyun.179.253.91.172.sslip.io`). Detay: `game-host/README.md`.
 - Gem Match: https://gemmatch.179.253.91.172.sslip.io/
 - Kelime Avı: https://kelimeavi.179.253.91.172.sslip.io/
 
-Eski ortak host hâlâ çalışır: `https://oyun.179.253.91.172.sslip.io/games/<id>/`
+Eski ortak `oyun` uygulaması Coolify'dan silindi (2026-11-24); bot menüleri yeni domainleri kullanıyor.
 
 Doğrulama:
 
