@@ -186,13 +186,12 @@ GET /games/gem-match                     → 301 → /games/gem-match/
 GET /api/query                           → 404 (API yok)
 ```
 
-### B. Telegram Mini App
+### B. Telegram Mini App (tamamlandı)
 
-1. BotFather → `/newapp` → bot seç → başlık **Gem Match**
-2. Web App URL: `https://<OYUN-DOMAIN>/games/gem-match/`
-3. Kısa ad: `gemmatch`
-4. Açılış linki: `https://t.me/<bot>/gemmatch`
-5. Menü butonu: `/setmenubutton`
+- Bot: `@gemmatch_bot`, başlık **Gem Match**
+- Web App URL: `https://oyun.179.253.91.172.sslip.io/games/gem-match/`
+- Kısa ad: `gemmatch`
+- Açılış linki: https://t.me/gemmatch_bot/gemmatch
 
 Oyun backend kullanmadığı için yeni bot token'ı gerekmez; sadece HTTPS URL yeter.
 

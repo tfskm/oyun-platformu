@@ -38,14 +38,16 @@ node game-host/server.cjs         # → http://localhost:3000/games/gem-match/
 > Build context'i `game-host/` yaparsan Docker `../games` ve `../package.json`'u
 > göremez. Bu yüzden context kök, Dockerfile `game-host/Dockerfile` olmalı.
 
-## BotFather (son adım, domain hazır olunca)
+## Telegram Mini App (tamamlandı)
 
-1. BotFather → `/newapp` → botunu seç.
-2. Başlık: **Gem Match**
-3. Web App URL: `https://<OYUN-DOMAIN>/games/gem-match/`
-4. Kısa ad: `gemmatch`
-5. Açılış: `https://t.me/<botun>/gemmatch`
-6. Menü butonu istersen `/setmenubutton`.
+- Bot: `@gemmatch_bot`
+- Başlık: **Gem Match**
+- Web App URL: `https://oyun.179.253.91.172.sslip.io/games/gem-match/`
+- Kısa ad: `gemmatch`
+- Açılış linki: https://t.me/gemmatch_bot/gemmatch
+
+Menü butonu veya mesaj içinde "Oyunu Aç" düğmesi istersen Bot API tarafında
+`short_name: gemmatch` ile WebApp butonu eklenir (bot token gerekir).
 
 `?lang=tr` / `?lang=en` ile dili test edebilirsin. Dil, Telegram kullanıcı dilinden
 veya menüdeki TR/EN düğmesinden de otomatik seçilir.
