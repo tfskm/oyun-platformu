@@ -147,9 +147,9 @@ export class GameScene extends Phaser.Scene {
   private buildHud(): void {
     const panel = this.add.graphics();
     panel.fillStyle(0x13203a, 0.95);
-    panel.fillRoundedRect(28, 40, W - 56, 232, 26);
+    panel.fillRoundedRect(28, 40, W - 56, 184, 26);
     panel.lineStyle(2, 0x2a3c60, 1);
-    panel.strokeRoundedRect(28, 40, W - 56, 232, 26);
+    panel.strokeRoundedRect(28, 40, W - 56, 184, 26);
 
     this.add
       .text(56, 66, upper(t('game.levelLabel', { n: this.def.level })), {
@@ -172,9 +172,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100);
 
     this.scoreText = this.add
-      .text(W / 2, 134, '0', {
+      .text(W / 2, 118, '0', {
         fontFamily: FONT,
-        fontSize: '62px',
+        fontSize: '58px',
         color: PALETTE.accent,
         fontStyle: 'bold',
       })
@@ -184,9 +184,9 @@ export class GameScene extends Phaser.Scene {
     this.bar = this.add.graphics().setDepth(100);
 
     this.foundText = this.add
-      .text(W / 2, 232, '', {
+      .text(W / 2, 194, '', {
         fontFamily: FONT,
-        fontSize: '20px',
+        fontSize: '18px',
         color: PALETTE.textDim,
         fontStyle: 'bold',
       })
@@ -194,9 +194,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100);
 
     this.add
-      .text(W / 2, 254, upper(t('game.howto')), {
+      .text(W / 2, 216, upper(t('game.howto')), {
         fontFamily: FONT,
-        fontSize: '13px',
+        fontSize: '12px',
         color: PALETTE.textDim,
         fontStyle: 'bold',
       })
@@ -219,12 +219,13 @@ export class GameScene extends Phaser.Scene {
     frame.lineStyle(2, 0x6a552e, 0.9);
     frame.strokeRoundedRect(this.originX - 16, this.originY - 16, size.w + 32, size.h + 32, 24);
 
-    this.pathG = this.add.graphics().setDepth(5);
+    // İp peteklerin ÜSTÜNDE, harflerin altında kalsın ki seçim yolu görünsün.
+    this.pathG = this.add.graphics().setDepth(8);
 
     this.wordText = this.add
-      .text(W / 2, 1114, '', {
+      .text(W / 2, 1160, '', {
         fontFamily: FONT,
-        fontSize: '44px',
+        fontSize: '46px',
         color: PALETTE.accent,
         fontStyle: 'bold',
       })
@@ -232,7 +233,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(30);
 
     this.feedbackText = this.add
-      .text(W / 2, 1166, t('game.minLength', { n: this.def.minLength }), {
+      .text(W / 2, 1210, t('game.minLength', { n: this.def.minLength }), {
         fontFamily: FONT,
         fontSize: '18px',
         color: PALETTE.textDim,
@@ -268,7 +269,7 @@ export class GameScene extends Phaser.Scene {
       const letter = this.add
         .text(x, y - 3, display(this.board[i].letter, this.lang), {
           fontFamily: FONT,
-          fontSize: '34px',
+          fontSize: '38px',
           color: PALETTE.hexText,
           fontStyle: 'bold',
         })
@@ -415,8 +416,8 @@ export class GameScene extends Phaser.Scene {
   private refreshPath(): void {
     this.pathG.clear();
     if (this.path.length >= 2) {
-      // dış yumuşak ışık + iç parlak çizgi
-      this.pathG.lineStyle(16, 0xffd166, 0.12);
+      // dış yumuşak ışık + ince renkli ip
+      this.pathG.lineStyle(14, 0xff2d55, 0.22);
       this.pathG.beginPath();
       const first = this.posOf(this.path[0]);
       this.pathG.moveTo(this.originX + first.x, this.originY + first.y);
@@ -425,7 +426,7 @@ export class GameScene extends Phaser.Scene {
         this.pathG.lineTo(this.originX + p.x, this.originY + p.y);
       }
       this.pathG.strokePath();
-      this.pathG.lineStyle(6, 0xffe9a3, 0.95);
+      this.pathG.lineStyle(4, 0x6fffe0, 0.98);
       this.pathG.beginPath();
       this.pathG.moveTo(this.originX + first.x, this.originY + first.y);
       for (let k = 1; k < this.path.length; k++) {
@@ -460,7 +461,15 @@ export class GameScene extends Phaser.Scene {
           ease: 'Back.easeOut',
         });
         this.tweens.add({ targets: glow, alpha: 0.34, duration: 170 });
-        letter.setColor(PALETTE.hexTextOn).setScale(1.18).setY(baseY - 1);
+        // Harf seçilince yükselip büyür.
+        letter.setColor(PALETTE.hexTextOn).setScale(0.92).setY(baseY + 3);
+        this.tweens.add({
+          targets: letter,
+          y: baseY - 12,
+          scale: 1.3,
+          duration: 240,
+          ease: 'Back.easeOut',
+        });
       } else {
         img.setTexture('hex');
         this.tweens.add({
@@ -472,6 +481,13 @@ export class GameScene extends Phaser.Scene {
         });
         this.tweens.add({ targets: glow, alpha: 0, duration: 140 });
         letter.setColor(PALETTE.hexText).setScale(1).setY(baseY - 3);
+        this.tweens.add({
+          targets: letter,
+          y: baseY - 3,
+          scale: 1,
+          duration: 150,
+          ease: 'Sine.easeOut',
+        });
       }
     }
 
@@ -492,7 +508,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.bar) return;
     const w = 480;
     const x = W / 2 - w / 2;
-    const y = 196;
+    const y = 168;
     const pct = Math.max(0, Math.min(1, this.score / this.def.target));
     this.bar.clear();
     this.bar.fillStyle(0x16213f, 1);

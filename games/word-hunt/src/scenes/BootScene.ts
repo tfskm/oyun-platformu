@@ -50,23 +50,34 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(wall, 1);
       g.fillPoints(shifted(4), true);
       // üst yüzey
+      const top = shifted(-2);
       g.fillStyle(face, 1);
-      g.fillPoints(shifted(-2), true);
+      g.fillPoints(top, true);
+
+      // kristal fasetler — merkezden köşelere sırayla açık/koyu üçgenler
+      const center = new Phaser.Geom.Point(c, c - 2);
+      for (let k = 0; k < 6; k++) {
+        const a = top[k];
+        const b = top[(k + 1) % 6];
+        g.fillStyle(k % 2 === 0 ? 0xffffff : 0x001318, k % 2 === 0 ? 0.075 : 0.11);
+        g.fillTriangle(center.x, center.y, a.x, a.y, b.x, b.y);
+      }
+
       // iç parlama
-      g.fillStyle(inner, 0.55);
-      g.fillPoints(this.hexPoints(c - 3, c - 7, HEX_SIZE - 10), true);
-      // ince kenar ışığı
-      g.lineStyle(2.5, edge, 0.85);
-      g.strokePoints(shifted(-2), true);
-      // küçük üst sol ışık
-      g.fillStyle(0xffffff, 0.16);
-      g.fillPoints(this.hexPoints(c - 7, c - 11, HEX_SIZE - 19), true);
+      g.fillStyle(inner, 0.4);
+      g.fillPoints(this.hexPoints(c - 3, c - 8, HEX_SIZE - 12), true);
+      // kenar ışığı
+      g.lineStyle(3, edge, 0.9);
+      g.strokePoints(top, true);
+      // üst sol küçük ışık noktası
+      g.fillStyle(0xffffff, 0.2);
+      g.fillPoints(this.hexPoints(c - 8, c - 12, HEX_SIZE - 20), true);
 
       g.generateTexture(key, pad * 2, pad * 2);
     };
 
     // Normal: sönük beyaz / buzlu cam
-    make('hex', 0x050a16, 0x5b6b86, 0xaebdd2, 0xdde7f5, 0xf2f7ff);
+    make('hex', 0x04121a, 0x126b70, 0x2b8f93, 0x74d8cf, 0xc9fff2);
     // Seçili: sarı ışıkla yanan petek
     make('hexOn', 0x5a3a00, 0xb97c12, 0xffd166, 0xfff3c4, 0xfffbe8);
 

@@ -5,7 +5,7 @@
 
 export const COLS = 7;
 export const ROWS = 8;
-export const HEX_SIZE = 50;
+export const HEX_SIZE = 56;
 
 export function index(col: number, row: number): number {
   return row * COLS + col;

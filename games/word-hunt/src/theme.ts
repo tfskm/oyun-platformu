@@ -16,14 +16,14 @@ export const PALETTE = {
   accent2: '#ff9f43',
   success: '#37e6a6',
   danger: '#ff5d6c',
-  hexText: '#1d2a45',
+  hexText: '#eafffb',
   hexTextOn: '#4a2f00',
 };
 
 export const LAYOUT = {
   boardX: W / 2,
-  boardTop: 300,
-  hexSize: 50,
+  boardTop: 240,
+  hexSize: 56,
 };
 
 export const HEX_COLORS = {
