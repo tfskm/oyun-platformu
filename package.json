@@ -1,0 +1,23 @@
+{
+  "name": "oyun-platformu",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Taskonomix'ten tamamen bağımsız oyun platformu - Gem Match Telegram Mini App",
+  "scripts": {
+    "dev": "vite --config games/gem-match/vite.config.ts",
+    "dev:game": "vite --config games/gem-match/vite.config.ts",
+    "build": "npm run typecheck && npm run build:games",
+    "build:games": "vite build --config games/gem-match/vite.config.ts",
+    "typecheck": "tsc --noEmit -p games/tsconfig.json",
+    "test": "node scripts/test-gem-match.mjs",
+    "start": "node game-host/server.cjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.21.5",
+    "phaser": "^3.90.0",
+    "typescript": "^7.0.2",
+    "vite": "^5.4.21"
+  }
+}
