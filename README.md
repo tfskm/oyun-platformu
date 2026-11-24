@@ -3,7 +3,9 @@
 Canlı oyunlar:
 - Gem Match: https://oyun.179.253.91.172.sslip.io/games/gem-match/
 - Kelime Avı: https://oyun.179.253.91.172.sslip.io/games/word-hunt/
-Telegram Mini App: https://t.me/gemmatch_bot/gemmatch  ·  kısa ad: `gemmatch`
+Telegram Mini App'leri:
+- Gem Match: https://t.me/gemmatch_bot/gemmatch · kısa ad `gemmatch` · menü: "Oyunu Başlat"
+- Kelime Avı: https://t.me/kelimeavi_bot/kelimeavi · kısa ad `kelimeavi` · menü: "Oyuna Başla"
 
 Taskonomix'ten **tamamen bağımsız** oyun deposu. Şu anki oyun: **Gem Match**
 (Telegram Mini App olarak açılabilen, Türkçe/İngilizce, mobil öncelikli).

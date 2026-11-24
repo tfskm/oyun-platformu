@@ -221,6 +221,14 @@ GET /api/query                           → 404 (API yok)
 - Web App URL: `https://oyun.179.253.91.172.sslip.io/games/gem-match/`
 - Kısa ad: `gemmatch`
 - Açılış linki: https://t.me/gemmatch_bot/gemmatch
+- Menü butonu: "Oyunu Başlat"
+
+**Kelime Avı Mini App:**
+- Bot: `@kelimeavi_bot`, başlık **Kelime Avı**
+- Web App URL: `https://oyun.179.253.91.172.sslip.io/games/word-hunt/`
+- Kısa ad: `kelimeavi`
+- Açılış linki: https://t.me/kelimeavi_bot/kelimeavi
+- Menü butonu: "Oyuna Başla" (Bot API `setChatMenuButton` / WebApp)
 
 Oyun backend kullanmadığı için yeni bot token'ı gerekmez; sadece HTTPS URL yeter.
 
