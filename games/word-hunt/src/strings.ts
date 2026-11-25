@@ -16,6 +16,16 @@ export const STRINGS: Dict = {
   'game.foundWords': ['BULUNAN KELİMELER', 'FOUND WORDS'],
   'game.noWords': ['Henüz kelime yok', 'No words yet'],
   'game.levelLabel': ['BÖLÜM {n}', 'LEVEL {n}'],
+  'game.tier0': ['İyi!', 'Good!'],
+  'game.tier1': ['GÜZEL!', 'NICE!'],
+  'game.tier2': ['HARİKA!', 'GREAT!'],
+  'game.tier3': ['EFSANE!', 'LEGENDARY!'],
+  'game.bonusTime': ['+{n} sn', '+{n}s'],
+  'game.hint': ['İPUCU', 'HINT'],
+  'game.hintLeft': ['İPUCU {n}', 'HINT {n}'],
+  'game.hintLength': ['{n} harfli bir kelime var', 'There is a {n}-letter word'],
+  'game.hintNone': ['İpucu kalmadı', 'No hints left'],
+  'game.hintEmpty': ['Gösterilecek ipucu yok', 'No hint available'],
   'game.minLength': ['En az {n} harf', 'At least {n} letters'],
 };
 

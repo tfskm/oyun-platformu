@@ -139,4 +139,41 @@ for (const lang of ['tr', 'en']) {
   ok(L.starsFor(400, 400) === 1 && L.starsFor(800, 400) === 3, 'yıldız eşikleri');
 }
 
+// ---------- 7. İpucu ----------
+for (const lang of ['tr', 'en']) {
+  const gen = B.generateBoard(createRng(lang === 'tr' ? 31 : 32), lang, 8);
+  const none = new Set();
+  const h1 = B.findHint(gen.cells, gen.planted, none);
+  ok(!!h1, `${lang}: ipucu bulunmalı`);
+  ok(h1.word.length === Math.min(...gen.planted.map((w) => w.length)), `${lang}: en kısa kelime önerilmeli`);
+  ok(B.wordFromPath(gen.cells, h1.path) === h1.word, `${lang}: ipucu yolu kelimeyi oluşturmalı`);
+  const h2 = B.findHint(gen.cells, gen.planted, none);
+  ok(JSON.stringify(h1) === JSON.stringify(h2), `${lang}: ipucu deterministik olmalı`);
+  const all = new Set(gen.planted);
+  ok(B.findHint(gen.cells, gen.planted, all) === null, `${lang}: hepsi bulunduysa ipucu null`);
+  const h3 = B.findHint(gen.cells, gen.planted, new Set([h1.word]));
+  ok(!h3 || h3.word !== h1.word, `${lang}: bulunan kelime tekrar önerilmemeli`);
+}
+ok(L.HINTS_PER_LEVEL > 0, 'bölüm başına ipucu hakkı olmalı');
+
+// ---------- 8. Evrim: bonus petek, kombo, süre ----------
+{
+  const a = B.pickBonusCells(createRng(5), 4);
+  const b = B.pickBonusCells(createRng(5), 4);
+  ok(JSON.stringify(a) === JSON.stringify(b), 'bonus seçimi deterministik olmalı');
+  ok(new Set(a).size === 4 && a.every((i) => i >= 0 && i < H.COLS * H.ROWS), 'bonus hücreler benzersiz ve tahta içinde');
+  const taken = new Set([0, 1, 2, 3, 4, 5]);
+  const c = B.pickBonusCells(createRng(9), 5, H.COLS * H.ROWS, taken);
+  ok(c.every((i) => !taken.has(i)), 'alınmış hücreler seçilmemeli');
+  ok(B.pickBonusCells(createRng(1), 99, 6).length === 6, 'istenen sayı hücreden fazlaysa kırpılmalı');
+
+  ok(L.scoreWord(5, 1, 1, 1) > L.scoreWord(5, 1, 1, 0), 'bonus petek puanı artırmalı');
+  ok(L.scoreWord(5, 1, 1) === L.scoreWord(5, 1, 1, 0), 'bonus parametresi isteğe bağlı');
+  ok(L.timeBonusFor(3, 0) === 0 && L.timeBonusFor(5, 0) === 1 && L.timeBonusFor(7, 0) === 2, 'uzun kelime süre kazandırır');
+  ok(L.timeBonusFor(4, 2) === 2 * L.BONUS_SECONDS, 'bonus petek süre kazandırır');
+  ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(12) === 3, 'övgü seviyeleri');
+  ok(L.bonusCount(1) === 3 && L.bonusCount(30) === 5, 'bonus sayısı seviyeyle artar');
+  ok(L.COMBO_WINDOW_MS > 0 && L.MAX_EXTRA_SECONDS > 0, 'kombo/süre sabitleri tanımlı');
+}
+
 console.log(`\n✅ Kelime Avı mantık testi geçti (${checks} kontrol)`);

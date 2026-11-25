@@ -114,6 +114,59 @@ export function generateBoard(
   return { cells, planted };
 }
 
+/**
+ * Bonus petek seçimi — verilen Rng ile deterministik.
+ * `taken` içindeki hücreler seçilmez.
+ */
+export function pickBonusCells(
+  rng: Rng,
+  count: number,
+  total: number = COLS * ROWS,
+  taken: ReadonlySet<number> = new Set()
+): number[] {
+  const free: number[] = [];
+  for (let i = 0; i < total; i++) if (!taken.has(i)) free.push(i);
+  rng.shuffle(free);
+  return free.slice(0, Math.max(0, Math.min(count, free.length)));
+}
+
+/** Kelimenin tahtadaki ilk komşu zincirini (hücre indeksleri) döndürür; yoksa null. */
+export function findWordPath(cells: Board, word: string, rows: number = ROWS): number[] | null {
+  const walk = (i: number, pos: number, path: number[]): number[] | null => {
+    if (pos === word.length) return path;
+    for (const n of neighborsOf(i, rows)) {
+      if (path.includes(n) || cells[n].letter !== word[pos]) continue;
+      const hit = walk(n, pos + 1, [...path, n]);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i].letter !== word[0]) continue;
+    const hit = walk(i, 1, [i]);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * İpucu: henüz bulunmamış ekilmiş kelimelerden en kısasının yolunu verir.
+ * Rastgelelik yok; aynı tahta + aynı bulunanlar = aynı ipucu (deterministik).
+ */
+export function findHint(
+  cells: Board,
+  planted: readonly string[],
+  found: ReadonlySet<string>,
+  rows: number = ROWS
+): { word: string; path: number[] } | null {
+  const left = planted.filter((w) => !found.has(w)).sort((a, b) => a.length - b.length);
+  for (const word of left) {
+    const path = findWordPath(cells, word, rows);
+    if (path) return { word, path };
+  }
+  return null;
+}
+
 export function wordFromPath(cells: Board, path: readonly number[]): string {
   return path.map((i) => cells[i]?.letter ?? '').join('');
 }

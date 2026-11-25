@@ -1,6 +1,19 @@
 import Phaser from 'phaser';
 import { H, LAYOUT, PALETTE, W } from '../theme.js';
-import { levelDef, MAX_LEVEL, scoreWord, starsFor, xpFor, type LevelDef } from '../core/levels.js';
+import {
+  bonusCount,
+  COMBO_WINDOW_MS,
+  HINTS_PER_LEVEL,
+  levelDef,
+  MAX_EXTRA_SECONDS,
+  MAX_LEVEL,
+  scoreWord,
+  starsFor,
+  tierFor,
+  timeBonusFor,
+  xpFor,
+  type LevelDef,
+} from '../core/levels.js';
 import {
   boardSize,
   COLS,
@@ -9,7 +22,14 @@ import {
   isAdjacent,
   ROWS,
 } from '../core/hex.js';
-import { checkPath, generateBoard, type Board, type CheckResult } from '../core/board.js';
+import {
+  checkPath,
+  findHint,
+  generateBoard,
+  pickBonusCells,
+  type Board,
+  type CheckResult,
+} from '../core/board.js';
 import { display, type WordLang } from '../core/words.js';
 import {
   createBridge,
@@ -67,6 +87,22 @@ export class GameScene extends Phaser.Scene {
   private feedbackText!: Phaser.GameObjects.Text;
   private bar!: Phaser.GameObjects.Graphics;
   private timerEvent?: Phaser.Time.TimerEvent;
+  private hintsLeft = HINTS_PER_LEVEL;
+  private hintCount = 0;
+  private hintText!: Phaser.GameObjects.Text;
+  private hintG!: Phaser.GameObjects.Graphics;
+
+  // Evrim: bonus petekler, kombo süresi, efektler
+  private bonus = new Set<number>();
+  private bonusMarks: Phaser.GameObjects.Image[] = [];
+  private comboText!: Phaser.GameObjects.Text;
+  private comboG!: Phaser.GameObjects.Graphics;
+  private starMarks: Phaser.GameObjects.Image[] = [];
+  private burst!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private dangerFx!: Phaser.GameObjects.Rectangle;
+  private starsLit = 0;
+  private shownScore = -1;
+  private lastWordAt = 0;
 
   constructor() {
     super('Game');
@@ -89,6 +125,14 @@ export class GameScene extends Phaser.Scene {
     this.hexGlows = [];
     this.letterTexts = [];
     this.hexOnFlags = [];
+    this.hintsLeft = HINTS_PER_LEVEL;
+    this.hintCount = 0;
+    this.bonus = new Set();
+    this.bonusMarks = [];
+    this.starMarks = [];
+    this.starsLit = 0;
+    this.shownScore = -1;
+    this.lastWordAt = 0;
   }
 
   create(): void {
@@ -97,6 +141,7 @@ export class GameScene extends Phaser.Scene {
     this.buildBackground();
     this.buildHud();
     this.buildBoard();
+    this.buildFx();
 
     this.input.on('pointerdown', this.onDown, this);
     this.input.on('pointermove', this.onMove, this);
@@ -134,22 +179,77 @@ export class GameScene extends Phaser.Scene {
 
   private buildBackground(): void {
     const g = this.add.graphics();
-    g.fillGradientStyle(0x0d1730, 0x0d1730, 0x05070f, 0x05070f, 1);
+    g.fillGradientStyle(0x0f1b3a, 0x0f1b3a, 0x04060d, 0x04060d, 1);
     g.fillRect(0, 0, W, H);
+
     this.add
-      .image(W / 2, 600, 'dot')
-      .setDisplaySize(950, 950)
-      .setAlpha(0.05)
-      .setTint(0xffd166)
+      .image(W / 2, 640, 'dot')
+      .setDisplaySize(1100, 1100)
+      .setAlpha(0.14)
+      .setTint(0xffb347)
       .setBlendMode(Phaser.BlendModes.ADD);
+    this.add
+      .image(110, 1190, 'dot')
+      .setDisplaySize(720, 720)
+      .setAlpha(0.1)
+      .setTint(0x2dd4bf)
+      .setBlendMode(Phaser.BlendModes.ADD);
+
+    // Yavaşça süzülen derinlik petekleri (görsel rastgelelik de seed'li).
+    const vr = createRng(0xbee5);
+    for (let i = 0; i < 14; i++) {
+      const x = vr.next() * W;
+      const y = vr.next() * H;
+      const hex = this.add
+        .image(x, y, 'hex')
+        .setScale(0.35 + vr.next() * 0.8)
+        .setAlpha(0.05 + vr.next() * 0.07)
+        .setTint(0x4a7bd6)
+        .setAngle(vr.int(0, 60));
+      this.tweens.add({
+        targets: hex,
+        y: y - 160 - vr.next() * 200,
+        angle: hex.angle + 40,
+        alpha: 0.02,
+        duration: 14000 + vr.int(0, 12000),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Son 10 saniyede kenarlarda kırmızı nabız.
+    this.dangerFx = this.add.rectangle(0, 0, W, H, 0xff1744, 1).setOrigin(0).setDepth(90).setAlpha(0);
+  }
+
+  private buildFx(): void {
+    this.burst = this.add
+      .particles(0, 0, 'spark', {
+        lifespan: { min: 380, max: 840 },
+        speed: { min: 90, max: 360 },
+        angle: { min: 0, max: 360 },
+        scale: { start: 0.9, end: 0 },
+        alpha: { start: 1, end: 0 },
+        gravityY: 380,
+        tint: [0xffd166, 0xff9f43, 0xfff3c4, 0x7dffe0],
+        blendMode: Phaser.BlendModes.ADD,
+        emitting: false,
+      })
+      .setDepth(250);
   }
 
   private buildHud(): void {
     const panel = this.add.graphics();
-    panel.fillStyle(0x13203a, 0.95);
-    panel.fillRoundedRect(28, 40, W - 56, 184, 26);
-    panel.lineStyle(2, 0x2a3c60, 1);
-    panel.strokeRoundedRect(28, 40, W - 56, 184, 26);
+    panel.fillStyle(0x000000, 0.3);
+    panel.fillRoundedRect(30, 48, W - 56, 184, 28);
+    panel.fillStyle(0x14223f, 0.94);
+    panel.fillRoundedRect(28, 40, W - 56, 184, 28);
+    panel.fillStyle(0xffffff, 0.05);
+    panel.fillRoundedRect(28, 40, W - 56, 72, { tl: 28, tr: 28, bl: 0, br: 0 });
+    panel.lineStyle(2, 0x34507f, 1);
+    panel.strokeRoundedRect(28, 40, W - 56, 184, 28);
+    panel.lineStyle(1.5, 0xffd166, 0.18);
+    panel.strokeRoundedRect(31, 43, W - 62, 178, 25);
 
     this.add
       .text(56, 66, upper(t('game.levelLabel', { n: this.def.level })), {
@@ -177,31 +277,42 @@ export class GameScene extends Phaser.Scene {
         fontSize: '58px',
         color: PALETTE.accent,
         fontStyle: 'bold',
+        stroke: '#5a3a00',
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setDepth(100);
+
+    // Kombo rozeti + sönme çubuğu (update() içinde çizilir)
+    this.comboText = this.add
+      .text(56, 98, '', {
+        fontFamily: FONT,
+        fontSize: '22px',
+        color: PALETTE.accent2,
+        fontStyle: 'bold',
+      })
+      .setDepth(100);
+    this.comboG = this.add.graphics().setDepth(100);
 
     this.bar = this.add.graphics().setDepth(100);
+    // Yıldız işaretleri: hedef (1★), %140 (2★), %200 (3★). Çubuk 0 → 2×hedef.
+    this.starMarks = [0.5, 0.7, 1].map((f) =>
+      this.add
+        .image(W / 2 - 240 + 480 * f, 175, 'star5')
+        .setDisplaySize(24, 24)
+        .setTint(0x24365f)
+        .setDepth(102)
+    );
 
     this.foundText = this.add
-      .text(W / 2, 194, '', {
+      .text(W / 2, 198, '', {
         fontFamily: FONT,
-        fontSize: '18px',
+        fontSize: '17px',
         color: PALETTE.textDim,
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setDepth(100);
-
-    this.add
-      .text(W / 2, 216, upper(t('game.howto')), {
-        fontFamily: FONT,
-        fontSize: '12px',
-        color: PALETTE.textDim,
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setAlpha(0.8);
 
     this.updateHud();
   }
@@ -240,12 +351,90 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(30);
+
+    this.hintG = this.add.graphics().setDepth(8);
+    this.buildHintButton();
+  }
+
+  // ================= İPUCU =================
+
+  private buildHintButton(): void {
+    const x = W - 96;
+    const y = 1160;
+    const g = this.add.graphics().setDepth(30);
+    g.fillStyle(0x18243f, 1);
+    g.fillRoundedRect(x - 72, y - 30, 144, 60, 18);
+    g.lineStyle(2, 0xffd166, 0.9);
+    g.strokeRoundedRect(x - 72, y - 30, 144, 60, 18);
+
+    this.hintText = this.add
+      .text(x, y - 2, '', {
+        fontFamily: FONT,
+        fontSize: '20px',
+        color: PALETTE.accent,
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setDepth(31);
+    this.refreshHintLabel();
+
+    const zone = this.add.zone(x, y, 144, 60).setOrigin(0.5).setDepth(32).setInteractive({ useHandCursor: true });
+    zone.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      ev?.stopPropagation?.();
+      unlockAudio();
+      this.useHint();
+    });
+  }
+
+  private refreshHintLabel(): void {
+    this.hintText?.setText(upper(t('game.hintLeft', { n: this.hintsLeft })));
+    this.hintText?.setAlpha(this.hintsLeft > 0 ? 1 : 0.4);
+  }
+
+  private useHint(): void {
+    if (!this.ready || this.ended) return;
+    if (this.hintsLeft <= 0) {
+      this.feedbackText.setText(t('game.hintNone')).setColor(PALETTE.danger);
+      play('invalid');
+      return;
+    }
+    const hint = findHint(this.board, this.planted, this.found);
+    if (!hint) {
+      this.feedbackText.setText(t('game.hintEmpty')).setColor(PALETTE.textDim);
+      return;
+    }
+    this.hintsLeft -= 1;
+    this.hintCount += 1;
+    this.refreshHintLabel();
+    play('hint');
+    haptic('light');
+    this.bridge.track('hint_used', { level: this.level, length: hint.word.length });
+
+    // Sadece ilk iki hücreyi ve yönü göster; kelimeyi tamamen verme.
+    const shown = hint.path.slice(0, 2);
+    this.hintG.clear();
+    this.hintG.lineStyle(6, 0xffd166, 0.95);
+    this.hintG.beginPath();
+    shown.forEach((i, k) => {
+      const p = this.posOf(i);
+      if (k === 0) this.hintG.moveTo(this.originX + p.x, this.originY + p.y);
+      else this.hintG.lineTo(this.originX + p.x, this.originY + p.y);
+    });
+    this.hintG.strokePath();
+    this.hintG.setAlpha(1);
+    this.tweens.add({ targets: this.hintG, alpha: 0, duration: 400, delay: 1800 });
+    this.feedbackText
+      .setText(t('game.hintLength', { n: hint.word.length }))
+      .setColor(PALETTE.accent);
   }
 
   private begin(): void {
     const gen = generateBoard(this.rng, this.lang, this.def.plantCount);
     this.board = gen.cells;
     this.planted = gen.planted;
+    // Bonus petekler tahtadan SONRA seçilir: aynı seed → aynı tahta + aynı bonuslar.
+    this.bonus = new Set(pickBonusCells(this.rng, bonusCount(this.level)));
+    play('whoosh');
 
     for (let i = 0; i < COLS * ROWS; i++) {
       const p = this.posOf(i);
@@ -261,10 +450,11 @@ export class GameScene extends Phaser.Scene {
         .setDepth(4);
 
       const img = this.add
-        .image(x, y, 'hex')
+        .image(x, y, this.bonus.has(i) ? 'hexBonus' : 'hex')
         .setDisplaySize(HEX_SIZE * 2 + 28, HEX_SIZE * 2 + 28)
         .setDepth(6)
-        .setAlpha(0);
+        .setAlpha(0)
+        .setScale(0.35);
 
       const letter = this.add
         .text(x, y - 3, display(this.board[i].letter, this.lang), {
@@ -272,24 +462,34 @@ export class GameScene extends Phaser.Scene {
           fontSize: '38px',
           color: PALETTE.hexText,
           fontStyle: 'bold',
+          stroke: '#04202a',
+          strokeThickness: 3,
         })
         .setOrigin(0.5)
         .setDepth(10)
         .setAlpha(0);
 
+      const mark = this.add
+        .image(x + HEX_SIZE * 0.5, y - HEX_SIZE * 0.58, 'star5')
+        .setDisplaySize(22, 22)
+        .setTint(0xf6dcff)
+        .setDepth(12)
+        .setAlpha(0);
+
       this.hexGlows.push(glow);
       this.hexViews.push(img);
       this.letterTexts.push(letter);
+      this.bonusMarks.push(mark);
       this.hexOnFlags.push(false);
-      this.tweens.add({
-        targets: [img, letter],
-        alpha: 1,
-        duration: 280,
-        delay: (i % COLS) * 22 + Math.floor(i / COLS) * 26,
-      });
+
+      const delay = (i % COLS) * 22 + Math.floor(i / COLS) * 26;
+      this.tweens.add({ targets: img, alpha: 1, scale: 1, duration: 420, ease: 'Back.easeOut', delay });
+      this.tweens.add({ targets: letter, alpha: 1, duration: 280, delay: delay + 120 });
     }
+    for (const i of this.bonus) this.setBonus(i, true, 700);
 
     this.startedAt = Date.now();
+    this.lastWordAt = this.time.now;
     this.ready = true;
     this.bridge.track('level_start', { level: this.level, lang: this.lang });
 
@@ -300,6 +500,7 @@ export class GameScene extends Phaser.Scene {
         if (this.ended) return;
         this.secondsLeft = Math.max(0, this.secondsLeft - 1);
         this.updateHud();
+        if (this.secondsLeft > 0 && this.secondsLeft <= 10) this.dangerPulse();
         if (this.secondsLeft === 0) void this.endGame();
       },
     });
@@ -334,7 +535,7 @@ export class GameScene extends Phaser.Scene {
     if (cell < 0) return;
     this.path = [cell];
     this.refreshPath();
-    play('select');
+    play('select', this.path.length);
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
@@ -354,7 +555,7 @@ export class GameScene extends Phaser.Scene {
 
     this.path.push(cell);
     this.refreshPath();
-    play('select');
+    play('select', this.path.length);
   }
 
   private onUp(): void {
@@ -366,25 +567,81 @@ export class GameScene extends Phaser.Scene {
   }
 
   private acceptWord(result: CheckResult): void {
+    const cells = [...this.path];
+    const bonusUsed = cells.filter((i) => this.bonus.has(i));
+    const len = result.word.length;
+
     this.found.add(result.word);
     this.foundOrder.push(result.word);
     this.combo += 1;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
-    const gained = scoreWord(result.word.length, this.combo, this.level);
+    this.lastWordAt = this.time.now;
+
+    const gained = scoreWord(len, this.combo, this.level, bonusUsed.length);
     this.score += gained;
 
+    const extra = timeBonusFor(len, bonusUsed.length);
+    if (extra > 0) {
+      this.secondsLeft = Math.min(this.def.seconds + MAX_EXTRA_SECONDS, this.secondsLeft + extra);
+    }
+    const tier = tierFor(len);
+
+    let cx = 0;
+    let cy = 0;
+    for (const i of cells) {
+      const p = this.posOf(i);
+      cx += this.originX + p.x;
+      cy += this.originY + p.y;
+    }
+    cx /= cells.length;
+    cy /= cells.length;
+
     this.wordText.setText(display(result.word, this.lang));
-    this.feedbackText.setText(`+${fmtInt(gained)}  ${t('common.great')}`).setColor(PALETTE.success);
-    play('match', this.combo);
-    haptic(this.combo >= 3 ? 'success' : 'light');
+    this.feedbackText
+      .setText(`+${fmtInt(gained)}  ${t(`game.tier${tier}`)}`)
+      .setColor(PALETTE.success);
+
+    play('word', len);
+    if (this.combo >= 3) play('match', this.combo);
+    haptic(tier >= 2 || this.combo >= 3 ? 'success' : 'light');
+
+    this.flashPath(cells);
+    this.burst.emitParticleAt(cx, cy, 14 + len * 4);
+    this.popup(cx, cy - 24, `+${fmtInt(gained)}`, tier >= 2 ? '#ffd166' : '#37e6a6', 34 + tier * 8);
+    if (extra > 0) {
+      this.popup(W - 120, 108, upper(t('game.bonusTime', { n: extra })), '#7dffe0', 26);
+    }
+
+    // Bonus petekler kullanılınca yeni yerlere taşınır.
+    if (bonusUsed.length) {
+      play('bonus');
+      for (const i of bonusUsed) {
+        this.bonus.delete(i);
+        this.setBonus(i, false);
+      }
+      const taken = new Set<number>([...this.bonus, ...cells]);
+      for (const i of pickBonusCells(this.rng, bonusUsed.length, COLS * ROWS, taken)) {
+        this.bonus.add(i);
+        this.setBonus(i, true);
+      }
+    }
+
+    if (tier >= 2) this.cameras.main.shake(130, 0.003 + tier * 0.001);
+    if (tier >= 3) {
+      this.cameras.main.flash(180, 255, 215, 120);
+      this.burst.emitParticleAt(W / 2, 640, 60);
+      play('whoosh');
+    }
     this.updateHud();
 
     this.bridge.track('word_found', {
       level: this.level,
       word: result.word,
-      length: result.word.length,
+      length: len,
       points: gained,
       combo: this.combo,
+      bonus: bonusUsed.length,
+      extraSeconds: extra,
     });
 
     const list = this.foundOrder.slice(-4).map((w) => display(w, this.lang)).join('  ·  ');
@@ -406,6 +663,132 @@ export class GameScene extends Phaser.Scene {
     play('invalid');
     haptic('error');
     this.cameras.main.shake(90, 0.0025);
+    // Geçersiz kelime komboyu bozar; kısa/tekrar denemeler bozmaz.
+    if (result.reason === 'invalid' && this.combo > 0) {
+      this.combo = 0;
+      this.updateHud();
+    }
+  }
+
+  // ================= EFEKTLER =================
+
+  private ring(x: number, y: number, color: number): void {
+    const r = this.add
+      .image(x, y, 'ring')
+      .setTint(color)
+      .setAlpha(0.9)
+      .setScale(0.5)
+      .setDepth(20)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: r,
+      scale: 1.7,
+      alpha: 0,
+      duration: 380,
+      ease: 'Cubic.easeOut',
+      onComplete: () => r.destroy(),
+    });
+  }
+
+  private popup(x: number, y: number, text: string, color: string, size: number): void {
+    const tx = this.add
+      .text(x, y, text, {
+        fontFamily: FONT,
+        fontSize: `${size}px`,
+        color,
+        fontStyle: 'bold',
+        stroke: '#05070f',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setDepth(80);
+    this.tweens.add({
+      targets: tx,
+      y: y - 80,
+      alpha: 0,
+      scale: 1.2,
+      duration: 900,
+      ease: 'Cubic.easeOut',
+      onComplete: () => tx.destroy(),
+    });
+  }
+
+  /** Bulunan kelimenin yolu altın renkte parlayıp söner. */
+  private flashPath(cells: number[]): void {
+    const g = this.add.graphics().setDepth(9);
+    g.lineStyle(12, 0xffd166, 0.95);
+    g.beginPath();
+    cells.forEach((i, k) => {
+      const p = this.posOf(i);
+      const x = this.originX + p.x;
+      const y = this.originY + p.y;
+      if (k === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    });
+    g.strokePath();
+    this.tweens.add({ targets: g, alpha: 0, duration: 420, onComplete: () => g.destroy() });
+  }
+
+  /** Bonus peteğin mor dokusunu ve nabız atan yıldızını açar/kapatır. */
+  private setBonus(i: number, on: boolean, delay = 0): void {
+    const mark = this.bonusMarks[i];
+    const img = this.hexViews[i];
+    if (!mark || !img) return;
+    this.tweens.killTweensOf(mark);
+    if (!this.hexOnFlags[i]) img.setTexture(on ? 'hexBonus' : 'hex');
+    if (on) {
+      mark.setAlpha(0).setScale(22 / 64);
+      this.tweens.add({
+        targets: mark,
+        scale: 0.46,
+        alpha: { from: 0.55, to: 1 },
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+        delay,
+        ease: 'Sine.easeInOut',
+      });
+    } else {
+      mark.setAlpha(0);
+    }
+  }
+
+  private dangerPulse(): void {
+    play('tick');
+    this.tweens.add({ targets: this.timeText, scale: { from: 1.3, to: 1 }, duration: 280 });
+    this.dangerFx.setAlpha(0.2);
+    this.tweens.add({ targets: this.dangerFx, alpha: 0, duration: 700 });
+  }
+
+  private celebrate(): void {
+    const spots: Array<[number, number]> = [
+      [W * 0.25, 520],
+      [W * 0.75, 520],
+      [W / 2, 420],
+    ];
+    spots.forEach(([x, y], k) =>
+      this.time.delayedCall(k * 180, () => {
+        this.burst.emitParticleAt(x, y, 48);
+        this.ring(x, y, 0xffd166);
+      })
+    );
+  }
+
+  /** Kombo çubuğu her karede yavaşça söner; süre dolunca kombo biter. */
+  update(): void {
+    if (!this.comboG) return;
+    this.comboG.clear();
+    if (this.combo <= 0 || this.ended) return;
+    const left = 1 - (this.time.now - this.lastWordAt) / COMBO_WINDOW_MS;
+    if (left <= 0) {
+      this.combo = 0;
+      this.updateHud();
+      return;
+    }
+    this.comboG.fillStyle(0x24365f, 1);
+    this.comboG.fillRoundedRect(56, 130, 150, 6, 3);
+    this.comboG.fillStyle(left < 0.3 ? 0xff5d6c : 0xff9f43, 1);
+    this.comboG.fillRoundedRect(56, 130, Math.max(6, 150 * left), 6, 3);
   }
 
   private clearPath(): void {
@@ -450,6 +833,7 @@ export class GameScene extends Phaser.Scene {
 
       if (on) {
         img.setTexture('hexOn');
+        this.ring(baseX, baseY, 0xffd166);
         img.setPosition(baseX, baseY + 7).setScale(0.86);
         this.tweens.add({
           targets: img,
@@ -458,7 +842,7 @@ export class GameScene extends Phaser.Scene {
           duration: 230,
           ease: 'Back.easeOut',
         });
-        this.tweens.add({ targets: glow, alpha: 0.34, duration: 170 });
+        this.tweens.add({ targets: glow, alpha: 0.8, duration: 170 });
         // Harf seçilince yükselip büyür.
         letter.setColor(PALETTE.hexTextOn).setScale(0.92).setY(baseY + 3);
         this.tweens.add({
@@ -469,7 +853,7 @@ export class GameScene extends Phaser.Scene {
           ease: 'Back.easeOut',
         });
       } else {
-        img.setTexture('hex');
+        img.setTexture(this.bonus.has(i) ? 'hexBonus' : 'hex');
         this.tweens.add({
           targets: img,
           y: baseY,
@@ -494,29 +878,48 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    this.scoreText?.setText(fmtInt(this.score));
+    if (this.scoreText && this.score !== this.shownScore) {
+      this.shownScore = this.score;
+      this.scoreText.setText(fmtInt(this.score));
+      this.tweens.add({ targets: this.scoreText, scale: { from: 1.14, to: 1 }, duration: 200 });
+    }
     this.timeText?.setText(`${upper(t('common.time'))} ${this.secondsLeft}`);
     this.timeText?.setColor(this.secondsLeft <= 10 ? PALETTE.danger : PALETTE.text);
     this.foundText?.setText(
       `${t('common.found')} ${this.found.size} ${t('common.words')}  •  ${t('game.minLength', { n: this.def.minLength })}`
     );
-    if (this.scoreText) {
-      this.tweens.add({ targets: this.scoreText, scale: { from: 1.12, to: 1 }, duration: 180 });
-    }
+    this.comboText?.setText(this.combo >= 2 ? upper(t('common.combo', { n: this.combo })) : '');
     if (!this.bar) return;
+
     const w = 480;
     const x = W / 2 - w / 2;
     const y = 168;
-    const pct = Math.max(0, Math.min(1, this.score / this.def.target));
+    // Çubuk 0 → 2×hedef; yıldız işaretleri 1×, 1.4×, 2× noktalarında.
+    const pct = Math.max(0, Math.min(1, this.score / (this.def.target * 2)));
     this.bar.clear();
-    this.bar.fillStyle(0x16213f, 1);
+    this.bar.fillStyle(0x0c1530, 1);
     this.bar.fillRoundedRect(x, y, w, 14, 7);
     if (pct > 0) {
-      this.bar.fillStyle(pct >= 1 ? 0x37e6a6 : 0xffd166, 1);
-      this.bar.fillRoundedRect(x, y, Math.max(14, w * pct), 14, 7);
+      const fw = Math.max(14, w * pct);
+      this.bar.fillStyle(pct >= 0.5 ? 0x37e6a6 : 0xffb347, 1);
+      this.bar.fillRoundedRect(x, y, fw, 14, 7);
+      this.bar.fillStyle(0xffffff, 0.28);
+      this.bar.fillRoundedRect(x + 3, y + 2, Math.max(8, fw - 6), 4, 2);
     }
-    this.bar.lineStyle(1, 0x2a3c60, 1);
+    this.bar.lineStyle(1, 0x34507f, 1);
     this.bar.strokeRoundedRect(x, y, w, 14, 7);
+
+    const stars = starsFor(this.score, this.def.target);
+    this.starMarks.forEach((m, k) => m.setTint(k < stars ? 0xffd166 : 0x24365f));
+    if (stars > this.starsLit) {
+      this.starsLit = stars;
+      const m = this.starMarks[stars - 1];
+      if (m && this.burst) {
+        play('star', stars);
+        this.burst.emitParticleAt(m.x, m.y, 18);
+        this.tweens.add({ targets: m, scale: { from: 0.9, to: 24 / 64 }, duration: 420, ease: 'Back.easeOut' });
+      }
+    }
   }
 
   private leaveLevel(): void {
@@ -561,6 +964,7 @@ export class GameScene extends Phaser.Scene {
           stars,
           found: this.found.size,
           maxCombo: this.maxCombo,
+          hints: this.hintCount,
           target: this.def.target,
         },
         clientVersion: '0.1.0',
@@ -607,7 +1011,7 @@ export class GameScene extends Phaser.Scene {
       const x = W / 2 + (i - 1) * 96;
       const earned = i < stars;
       const star = this.add
-        .image(x, panelY + 152, 'spark')
+        .image(x, panelY + 152, 'star5')
         .setDisplaySize(earned ? 72 : 56, earned ? 72 : 56)
         .setTint(earned ? 0xffd166 : 0x24365f)
         .setAlpha(earned ? 1 : 0.5);
@@ -616,7 +1020,7 @@ export class GameScene extends Phaser.Scene {
         star.setScale(0);
         this.tweens.add({
           targets: star,
-          scale: 1,
+          scale: 72 / 64,
           duration: 380,
           delay: 220 + i * 160,
           ease: 'Back.easeOut',
@@ -717,5 +1121,6 @@ export class GameScene extends Phaser.Scene {
 
     layer.setAlpha(0);
     this.tweens.add({ targets: layer, alpha: 1, duration: 260 });
+    if (won) this.celebrate();
   }
 }
