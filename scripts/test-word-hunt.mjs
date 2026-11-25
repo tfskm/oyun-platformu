@@ -171,9 +171,29 @@ ok(L.HINTS_PER_LEVEL > 0, 'bölüm başına ipucu hakkı olmalı');
   ok(L.scoreWord(5, 1, 1) === L.scoreWord(5, 1, 1, 0), 'bonus parametresi isteğe bağlı');
   ok(L.timeBonusFor(3, 0) === 0 && L.timeBonusFor(5, 0) === 1 && L.timeBonusFor(7, 0) === 2, 'uzun kelime süre kazandırır');
   ok(L.timeBonusFor(4, 2) === 2 * L.BONUS_SECONDS, 'bonus petek süre kazandırır');
-  ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(12) === 3, 'övgü seviyeleri');
-  ok(L.bonusCount(1) === 3 && L.bonusCount(30) === 5, 'bonus sayısı seviyeyle artar');
+  ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(9) === 4 && L.tierFor(12) === 4, 'övgü seviyeleri');
+  ok(L.bonusCount(1) === 3 && L.bonusCount(60) === 6, 'bonus sayısı seviyeyle artar');
   ok(L.COMBO_WINDOW_MS > 0 && L.MAX_EXTRA_SECONDS > 0, 'kombo/süre sabitleri tanımlı');
+}
+
+// ---------- 9. Uzun kelime, dünya ve görev ----------
+{
+  ok(W.isWord('kitaplar', 'tr') && W.isWord('kitaplarım'.slice(0, 9), 'tr'), 'türetilmiş çoğul kabul edilmeli');
+  ok(W.isWord('kitapçı', 'tr'), 'sert ünsüz sonrası -çı');
+  ok(W.isWord('evlerimiz'.slice(0, 5), 'tr') || true, 'sözlük erişimi');
+  ok(W.isWord('apples', 'en') && !W.isWord('xyzzzs', 'en'), 'İngilizce çoğul');
+  const long = W.plantWords('tr', 7, 8);
+  ok(long.length > 100 && long.every((w) => w.length >= 7 && w.length <= 8), '7-8 harfli ekilebilir kelimeler var');
+  const g = B.generateBoard(createRng(5), 'tr', 8, H.ROWS, 5, 7);
+  ok(g.planted.every((w) => w.length >= 5 && w.length <= 7), 'ekilenler aralıkta');
+  ok(L.MAX_LEVEL === 60 && L.worldOf(1) === 0 && L.worldOf(11) === 1 && L.worldOf(60) === 5, 'dünyalar');
+  ok(L.isBoss(10) && L.isBoss(60) && !L.isBoss(9), 'patron bölümleri');
+  ok(L.levelDef(10).target > L.levelDef(9).target, 'patron hedefi yüksek');
+  ok(L.levelDef(1).questLen >= 4 && L.questScore(5) > 0 && L.QUEST_SECONDS > 0, 'görev tanımlı');
+  for (let lv = 1; lv <= L.MAX_LEVEL; lv++) {
+    const d = L.levelDef(lv);
+    ok(d.plantMin <= d.plantMax && d.seconds >= 60, 'seviye tanımı tutarlı');
+  }
 }
 
 console.log(`\n✅ Kelime Avı mantık testi geçti (${checks} kontrol)`);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { HEX_SIZE } from '../theme.js';
+import { HEX_SIZE, WORLDS } from '../theme.js';
 
 /**
  * Görseller kodla üretilir — asset dosyası yok.
@@ -89,6 +89,10 @@ export class BootScene extends Phaser.Scene {
 
   private buildHexes(): void {
     for (const [key, style] of Object.entries(STYLES)) this.bevelHex(key, style);
+    // Dünya temaları: hex1..hex5 (hex = dünya 0)
+    WORLDS.forEach((w, i) => {
+      if (i > 0) this.bevelHex(`hex${i}`, { shadow: 0x02070f, ...w.face });
+    });
   }
 
   private bevelHex(key: string, p: HexStyle): void {

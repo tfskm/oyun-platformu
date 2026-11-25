@@ -95,7 +95,9 @@ export function generateBoard(
   rng: Rng,
   lang: WordLang,
   plantCount: number,
-  rows: number = ROWS
+  rows: number = ROWS,
+  minLen = 3,
+  maxLen = 6
 ): GeneratedBoard {
   const pool = POOLS[lang];
   const cells: Board = [];
@@ -103,9 +105,9 @@ export function generateBoard(
     cells.push({ letter: pool[rng.int(0, pool.length)] });
   }
 
-  const candidates = plantWords(lang);
+  const candidates = plantWords(lang, minLen, maxLen);
   const planted: string[] = [];
-  const shuffled = rng.shuffle([...candidates]).slice(0, plantCount * 3);
+  const shuffled = rng.shuffle([...candidates]).slice(0, plantCount * 6);
   for (const word of shuffled) {
     if (planted.length >= plantCount) break;
     if (placeWord(cells, word, rng, rows, planted)) planted.push(word);
