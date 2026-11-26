@@ -170,7 +170,7 @@ ok(L.HINTS_PER_LEVEL > 0, 'bölüm başına ipucu hakkı olmalı');
 
   ok(L.scoreWord(5, 1, 1, 1) > L.scoreWord(5, 1, 1, 0), 'bonus petek puanı artırmalı');
   ok(L.scoreWord(5, 1, 1) === L.scoreWord(5, 1, 1, 0), 'bonus parametresi isteğe bağlı');
-  ok(L.timeBonusFor(3, 0) === 0 && L.timeBonusFor(5, 0) === 1 && L.timeBonusFor(7, 0) === 2, 'uzun kelime süre kazandırır');
+  ok(L.timeBonusFor(3, 0) === 0 && L.timeBonusFor(5, 0) === 1 && L.timeBonusFor(7, 0) === 3, 'uzun kelime süre kazandırır');
   ok(L.timeBonusFor(4, 2) === 2 * L.BONUS_SECONDS, 'bonus petek süre kazandırır');
   ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(12) === 3, 'övgü seviyeleri');
   ok(L.bonusCount(1) === 3 && L.bonusCount(30) === 5, 'bonus sayısı seviyeyle artar');
@@ -196,8 +196,8 @@ ok(L.HINTS_PER_LEVEL > 0, 'bölüm başına ipucu hakkı olmalı');
 }
 
 // ---------- 10. Fırsatlar: çarpan, ateş, joker sayısı ----------
-ok(L.multiplierFor(false, false, false) === 1, 'çarpan 1');
-ok(L.multiplierFor(true, true, false) === 3 && L.multiplierFor(true, true, true) === 5, 'çarpanlar toplanır');
+ok(L.multiplierFor(false, false, 1, false) === 1, 'çarpan 1');
+ok(L.multiplierFor(true, true, 1, false) === 3 && L.multiplierFor(true, true, 3, false) === 5, 'çarpanlar toplanır');
 ok(L.feverGain(5, 0) === 40 && L.feverGain(3, 1) === 34, 'ateş dolumu');
 ok(L.jokerCount(1) === 0 && L.jokerCount(3) === 1 && L.jokerCount(15) === 2, 'joker sayısı seviyeye göre');
 ok(L.FEVER_MS > 0 && L.GOLDEN_MS > 0, 'süre sabitleri');
@@ -238,13 +238,13 @@ ok(L.FEVER_MS > 0 && L.GOLDEN_MS > 0, 'süre sabitleri');
 {
   const r = [3, 4, 5, 6, 7, 8, 11].map((n) => L.lengthReward(n));
   ok(r[0].points === 0 && r[1].points === 0, '3-4 harf ödülsüz');
-  ok(r[2].points === 40 && r[3].points === 120, '5-6 harf puan ödülü');
-  ok(r[4].hints === 1 && r[4].freezeMs === 3000, '7 harf ipucu ve dondurma');
-  ok(r[5].hints === 1 && r[5].freezeMs === 5000 && r[6].points === r[5].points, '8+ harf en yüksek ödül');
+  ok(r[2].points === 60 && r[3].points === 180, '5-6 harf puan ödülü');
+  ok(r[4].hints === 1 && r[4].freezeMs === 4000, '7 harf ipucu ve dondurma');
+  ok(r[5].hints === 2 && r[5].freezeMs === 6000 && r[6].points === r[5].points, '8+ harf en yüksek ödül');
   for (let n = 4; n < 10; n++) ok(L.lengthReward(n + 1).points >= L.lengthReward(n).points, 'ödül uzunlukla azalmamalı');
 
   ok(L.comboMilestone(1) === null && L.comboMilestone(4) === null, 'kilometre taşı yalnızca belirli komboda');
-  ok(L.comboMilestone(3).seconds === 1 && L.comboMilestone(12).points === 1000, 'kilometre taşı değerleri');
+  ok(L.comboMilestone(3).seconds === 2 && L.comboMilestone(12).points === 1200, 'kilometre taşı değerleri');
 
   const c1 = L.chestValues(1);
   const c3 = L.chestValues(3);

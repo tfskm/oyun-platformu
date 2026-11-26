@@ -1,3 +1,4 @@
+
 import Phaser from 'phaser';
 import { H, LAYOUT, PALETTE, W } from '../theme.js';
 import {
@@ -8,7 +9,9 @@ import {
   FEVER_MS,
   feverGain,
   GOLDEN_MS,
+  FRENZY_MS,
   jokerCount,
+  letterSpecialCount,
   lengthReward,
   multiplierFor,
   HINTS_PER_LEVEL,
@@ -121,7 +124,7 @@ export class GameScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private hintG!: Phaser.GameObjects.Graphics;
 
-  // Evrim: bonus petekler, kombo süresi, efektler
+  // Evrim & Bonuslar
   private bonus = new Set<number>();
   private bonusMarks: Phaser.GameObjects.Image[] = [];
   private comboText!: Phaser.GameObjects.Text;
@@ -133,7 +136,7 @@ export class GameScene extends Phaser.Scene {
   private shownScore = -1;
   private lastWordAt = 0;
 
-  // Fırsatlar: joker, ateş, altın an, hazine kelimesi, rozetler, günlük
+  // Joker, Ateş, Altın An, Hazine
   private jokers = new Set<number>();
   private treasure = '';
   private treasureText!: Phaser.GameObjects.Text;
@@ -150,6 +153,15 @@ export class GameScene extends Phaser.Scene {
   private resultNote = '';
   private toastQueue: string[] = [];
   private toasting = false;
+
+  // YENİ ÖZELLİKLER: Sürpriz 2X/3X, Gökkuşağı Petekler, Harf Bonusları, Maskot Karakter
+  private frenzyUntil = 0;
+  private frenzyMult = 1;
+  private rainbowUntil = 0;
+  private letterSpecial = new Map<number, { type: 'x2' | '+50'; text: Phaser.GameObjects.Text }>();
+  private mascotBee?: Phaser.GameObjects.Image;
+  private mascotCell = -1;
+  private mascotTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super('Game');
@@ -195,6 +207,12 @@ export class GameScene extends Phaser.Scene {
     this.resultNote = '';
     this.toastQueue = [];
     this.toasting = false;
+
+    this.frenzyUntil = 0;
+    this.frenzyMult = 1;
+    this.rainbowUntil = 0;
+    this.letterSpecial = new Map();
+    this.mascotCell = -1;
   }
 
   create(): void {
@@ -214,6 +232,7 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       setBackButton(null);
       this.timerEvent?.remove();
+      this.mascotTimer?.remove();
     });
 
     const loading = this.add
@@ -238,8 +257,6 @@ export class GameScene extends Phaser.Scene {
       });
   }
 
-  // ================= KURULUM =================
-
   private buildBackground(): void {
     const g = this.add.graphics();
     g.fillGradientStyle(0x0f1b3a, 0x0f1b3a, 0x04060d, 0x04060d, 1);
@@ -258,7 +275,6 @@ export class GameScene extends Phaser.Scene {
       .setTint(0x2dd4bf)
       .setBlendMode(Phaser.BlendModes.ADD);
 
-    // Yavaşça süzülen derinlik petekleri (görsel rastgelelik de seed'li).
     const vr = createRng(0xbee5);
     for (let i = 0; i < 14; i++) {
       const x = vr.next() * W;
@@ -281,7 +297,6 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Son 10 saniyede kenarlarda kırmızı nabız.
     this.dangerFx = this.add.rectangle(0, 0, W, H, 0xff1744, 1).setOrigin(0).setDepth(90).setAlpha(0);
   }
 
@@ -300,7 +315,6 @@ export class GameScene extends Phaser.Scene {
       })
       .setDepth(250);
 
-    // Konfeti: yıldız dokulu, yukarı fırlayıp düşen renkli parçalar.
     this.confetti = this.add
       .particles(0, 0, 'star5', {
         lifespan: { min: 800, max: 1500 },
@@ -373,7 +387,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100);
 
-    // Kombo rozeti + sönme çubuğu (update() içinde çizilir)
+    // Tıklanabilir Kombo Alanı (Rehber açar)
     this.comboText = this.add
       .text(56, 98, '', {
         fontFamily: FONT,
@@ -381,7 +395,10 @@ export class GameScene extends Phaser.Scene {
         color: PALETTE.accent2,
         fontStyle: 'bold',
       })
+      .setInteractive({ useHandCursor: true })
       .setDepth(100);
+    this.comboText.on('pointerdown', () => this.showGuideModal());
+
     this.comboG = this.add.graphics().setDepth(100);
     this.modeText = this.add
       .text(W - 56, 100, '', {
@@ -395,7 +412,6 @@ export class GameScene extends Phaser.Scene {
     this.feverG = this.add.graphics().setDepth(100);
 
     this.bar = this.add.graphics().setDepth(100);
-    // Yıldız işaretleri: hedef (1★), %140 (2★), %200 (3★). Çubuk 0 → 2×hedef.
     this.starMarks = [0.5, 0.7, 1].map((f) =>
       this.add
         .image(W / 2 - 240 + 480 * f, 175, 'star5')
@@ -430,10 +446,8 @@ export class GameScene extends Phaser.Scene {
     frame.lineStyle(2, 0x6a552e, 0.9);
     frame.strokeRoundedRect(this.originX - 16, this.originY - 16, size.w + 32, size.h + 32, 24);
 
-    // İp peteklerin ÜSTÜNDE, harflerin altında kalsın ki seçim yolu görünsün.
     this.pathG = this.add.graphics().setDepth(9);
 
-    // Tahtanın üstünden periyodik geçen cam parlaması.
     const maskG = this.make.graphics({ x: 0, y: 0 }, false);
     maskG.fillStyle(0xffffff, 1);
     maskG.fillRoundedRect(this.originX - 16, this.originY - 16, size.w + 32, size.h + 32, 24);
@@ -478,10 +492,15 @@ export class GameScene extends Phaser.Scene {
     this.buildHintButton();
   }
 
-  // ================= İPUCU =================
-
   private buildHintButton(): void {
-    const btn = addButton(this, W - 100, 1166, 160, 64, '', { fontSize: 20, border: 0xffd166, labelColor: PALETTE.accent }, () =>
+    // Sol tarafa: Bilgi (?) Rehber Butonu
+    const infoBtn = addButton(this, 100, 1166, 120, 64, '?', { fontSize: 28, border: 0x34507f, labelColor: PALETTE.textDim }, () =>
+      this.showGuideModal()
+    );
+    infoBtn.container.setDepth(30);
+
+    // Sağ tarafa: Kopya (İpucu) Butonu
+    const btn = addButton(this, W - 110, 1166, 180, 64, '', { fontSize: 20, border: 0xffd166, labelColor: PALETTE.accent }, () =>
       this.useHint()
     );
     btn.container.setDepth(30);
@@ -492,6 +511,57 @@ export class GameScene extends Phaser.Scene {
   private refreshHintLabel(): void {
     this.hintText?.setText(upper(t('game.hintLeft', { n: this.hintsLeft })));
     this.hintText?.setAlpha(this.hintsLeft > 0 ? 1 : 0.4);
+  }
+
+  private showGuideModal(): void {
+    play('click');
+    const layer = this.add.container(0, 0).setDepth(300);
+    const dim = this.add.rectangle(0, 0, W, H, 0x03060d, 0.88).setOrigin(0).setInteractive();
+    layer.add(dim);
+
+    const boxY = 320;
+    const boxW = W - 80;
+    const boxH = 680;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x111c33, 0.98);
+    bg.fillRoundedRect(40, boxY, boxW, boxH, 28);
+    bg.lineStyle(2, 0xffd166, 0.9);
+    bg.strokeRoundedRect(40, boxY, boxW, boxH, 28);
+    layer.add(bg);
+
+    const title = this.add
+      .text(W / 2, boxY + 48, upper(t('guide.title')), {
+        fontFamily: FONT,
+        fontSize: '28px',
+        color: PALETTE.accent,
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    layer.add(title);
+
+    const tips = [
+      t('guide.comboDesc'),
+      t('guide.hintDesc'),
+      t('guide.frenzyDesc'),
+      t('guide.beeDesc'),
+    ];
+
+    tips.forEach((text, i) => {
+      const y = boxY + 110 + i * 115;
+      const tObj = this.add.text(70, y, text, {
+        fontFamily: FONT,
+        fontSize: '17px',
+        color: PALETTE.text,
+        wordWrap: { width: boxW - 60 },
+        lineSpacing: 6,
+      });
+      layer.add(tObj);
+    });
+
+    addButton(this, W / 2, boxY + boxH - 58, 280, 58, upper(t('guide.close')), { primary: true, fontSize: 20 }, () => {
+      play('click');
+      layer.destroy();
+    }, layer);
   }
 
   private useHint(): void {
@@ -513,7 +583,6 @@ export class GameScene extends Phaser.Scene {
     haptic('light');
     this.bridge.track('hint_used', { level: this.level, length: hint.word.length });
 
-    // Sadece ilk iki hücreyi ve yönü göster; kelimeyi tamamen verme.
     const shown = hint.path.slice(0, 2);
     this.hintG.clear();
     this.hintG.lineStyle(6, 0xffd166, 0.95);
@@ -535,10 +604,12 @@ export class GameScene extends Phaser.Scene {
     const gen = generateBoard(this.rng, this.lang, this.def.plantCount);
     this.board = gen.cells;
     this.planted = gen.planted;
-    // Bonus petekler tahtadan SONRA seçilir: aynı seed → aynı tahta + aynı bonuslar.
     this.bonus = new Set(pickBonusCells(this.rng, bonusCount(this.level)));
     this.jokers = new Set(pickBonusCells(this.rng, jokerCount(this.level), COLS * ROWS, this.bonus));
-    // Hazine kelimesi: ekilen en uzun kelime (eşitlikte ekim sırası → deterministik).
+
+    // Harflerde Özel Puanlar (x2 veya +50 puan rozetleri)
+    const specialCells = pickBonusCells(this.rng, letterSpecialCount(this.level), COLS * ROWS, new Set([...this.bonus, ...this.jokers]));
+
     this.treasure = [...this.planted].filter((w) => w.length >= 5).sort((a, b) => b.length - a.length)[0] ?? '';
     play('whoosh');
 
@@ -555,7 +626,6 @@ export class GameScene extends Phaser.Scene {
         .setAlpha(0)
         .setDepth(4);
 
-      // Zemin gölgesi: petek yükselince büyüyüp koyulaşır (3B derinlik).
       const shadow = this.add
         .image(x, y + 9, 'dot')
         .setDisplaySize(HEX_SIZE * 1.95, HEX_SIZE * 1.1)
@@ -597,13 +667,34 @@ export class GameScene extends Phaser.Scene {
       this.bonusMarks.push(mark);
       this.hexOnFlags.push(false);
 
+      // Özel harf etiketi
+      if (specialCells.includes(i)) {
+        const type = (i % 2 === 0) ? 'x2' : '+50';
+        const sText = this.add
+          .text(x - HEX_SIZE * 0.45, y - HEX_SIZE * 0.55, type, {
+            fontFamily: FONT,
+            fontSize: '14px',
+            color: '#ffd166',
+            fontStyle: 'bold',
+            stroke: '#05070f',
+            strokeThickness: 3,
+          })
+          .setOrigin(0.5)
+          .setDepth(13);
+        this.letterSpecial.set(i, { type, text: sText });
+      }
+
       const delay = (i % COLS) * 22 + Math.floor(i / COLS) * 26;
       this.tweens.add({ targets: img, alpha: 1, scale: 1, duration: 420, ease: 'Back.easeOut', delay });
       this.tweens.add({ targets: letter, alpha: 1, duration: 280, delay: delay + 120 });
       this.tweens.add({ targets: shadow, alpha: 0.3, duration: 400, delay: delay + 60 });
     }
+
     for (const i of this.bonus) this.setBonus(i, true, 700);
     this.refreshTreasure();
+
+    // Maskot Karakter: Bal Arısı
+    this.spawnMascot();
 
     this.startedAt = Date.now();
     this.lastWordAt = this.time.now;
@@ -615,11 +706,10 @@ export class GameScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         if (this.ended) return;
-        // Zaman dondurma: süre akmaz.
         if (this.time.now < this.freezeUntil) return;
         this.secondsLeft = Math.max(0, this.secondsLeft - 1);
         this.updateHud();
-        this.maybeGolden();
+        this.maybeGoldenOrFrenzy();
         if (this.secondsLeft > 0 && this.secondsLeft <= 10) this.dangerPulse();
         if (this.secondsLeft === 0) void this.endGame();
       },
@@ -628,6 +718,75 @@ export class GameScene extends Phaser.Scene {
 
   private posOf(i: number): { x: number; y: number } {
     return hexPos(i);
+  }
+
+  // ================= MASKOT KARAKTER (BAL ARISI) =================
+
+  private spawnMascot(): void {
+    const startCell = this.rng.int(0, COLS * ROWS);
+    const p = this.posOf(startCell);
+    this.mascotCell = startCell;
+
+    this.mascotBee = this.add
+      .image(this.originX + p.x, this.originY + p.y, 'mascotBee')
+      .setDisplaySize(52, 52)
+      .setDepth(35)
+      .setInteractive({ useHandCursor: true });
+
+    // Tıklanırsa maskot sürpriz hediye patlatır
+    this.mascotBee.on('pointerdown', () => this.catchMascot());
+
+    // Kanat çırpma animasyonu
+    this.tweens.add({
+      targets: this.mascotBee,
+      scaleY: 0.85,
+      yoyo: true,
+      repeat: -1,
+      duration: 160,
+      ease: 'Sine.easeInOut',
+    });
+
+    // Her 5-8 saniyede bir komşu bir harfe uçar
+    this.mascotTimer = this.time.addEvent({
+      delay: 6000,
+      loop: true,
+      callback: () => this.flyMascotToNext(),
+    });
+  }
+
+  private flyMascotToNext(): void {
+    if (!this.mascotBee || this.ended) return;
+    const nextCell = this.rng.int(0, COLS * ROWS);
+    this.mascotCell = nextCell;
+    const p = this.posOf(nextCell);
+    const targetX = this.originX + p.x;
+    const targetY = this.originY + p.y;
+
+    this.tweens.add({
+      targets: this.mascotBee,
+      x: targetX,
+      y: targetY,
+      duration: 1200,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private catchMascot(): void {
+    if (!this.mascotBee || this.ended) return;
+    play('treasure');
+    haptic('success');
+    const x = this.mascotBee.x;
+    const y = this.mascotBee.y;
+
+    this.score += 150;
+    this.secondsLeft = Math.min(this.def.seconds + MAX_EXTRA_SECONDS, this.secondsLeft + 3);
+    this.popup(x, y - 40, t('game.mascotCaught'), '#ffd166', 26);
+    this.burst.emitParticleAt(x, y, 30);
+    this.shockwave(x, y, 0xffd166);
+
+    // Başka bir yere sıçrar
+    this.flyMascotToNext();
+    this.updateHud();
   }
 
   // ================= GİRDİ =================
@@ -699,12 +858,31 @@ export class GameScene extends Phaser.Scene {
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     this.lastWordAt = now;
 
+    // Özel harf bonusları hesapla
+    let letterBonusPts = 0;
+    let hasSpecialLetter = false;
+    for (const c of cells) {
+      if (this.letterSpecial.has(c)) {
+        hasSpecialLetter = true;
+        const sp = this.letterSpecial.get(c)!;
+        if (sp.type === '+50') letterBonusPts += 50;
+        else if (sp.type === 'x2') letterBonusPts += len * 15;
+      }
+    }
+
+    // Maskot arının üzerinden geçildi mi?
+    if (this.mascotCell >= 0 && cells.includes(this.mascotCell)) {
+      this.catchMascot();
+    }
+
     const isTreasure = this.treasure !== '' && result.word === this.treasure;
     const fever = now < this.feverUntil;
     const golden = now < this.goldenUntil;
-    const mult = multiplierFor(fever, golden, isTreasure);
+    const frenzyActive = now < this.frenzyUntil;
+    const mult = multiplierFor(fever, golden, frenzyActive ? this.frenzyMult : 1, isTreasure);
     const reward = lengthReward(len);
-    const gained = scoreWord(len, this.combo, this.level, bonusUsed.length) * mult + reward.points;
+
+    const gained = scoreWord(len, this.combo, this.level, bonusUsed.length, letterBonusPts) * mult + reward.points;
     this.score += gained;
 
     const extra = timeBonusFor(len, bonusUsed.length) + (isTreasure ? 5 : 0) + (fever ? 1 : 0);
@@ -737,11 +915,19 @@ export class GameScene extends Phaser.Scene {
     this.burst.emitParticleAt(cx, cy, 14 + len * 4);
     this.popup(cx, cy - 24, `+${fmtInt(gained)}`, tier >= 2 || mult > 1 ? '#ffd166' : '#37e6a6', 34 + tier * 8);
     if (mult > 1) this.popup(cx, cy + 22, `x${mult}`, '#ff9f43', 30);
+    if (hasSpecialLetter) this.popup(cx, cy + 54, t('game.letterBonus'), '#7dffe0', 22);
+
     if (extra > 0) {
       this.popup(W - 120, 108, upper(t('game.bonusTime', { n: extra })), '#7dffe0', 26);
     }
 
-    // Bonus petekler kullanılınca yeni yerlere taşınır.
+    // Uzun Kelimede Peteklerin Renk Değiştirmesi (Rainbow Modu)
+    if (reward.rainbowMs > 0) {
+      this.rainbowUntil = now + reward.rainbowMs;
+      this.banner(t('game.rainbowPetal'), '#00ffcc');
+      play('fever');
+    }
+
     if (bonusUsed.length) {
       play('bonus');
       for (const i of bonusUsed) {
@@ -755,7 +941,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Joker sadece kelimeyi tamamlamak için gerçekten gerekliyse harcanır.
     if (result.joker && jokerCells.length) {
       play('bonus');
       this.popup(cx, cy + 62, t('game.joker'), '#ff8fc7', 30);
@@ -770,7 +955,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Hazine kelimesi: büyük kutlama.
     if (isTreasure) {
       play('treasure');
       this.banner(t('game.treasureFound'), '#ffd166');
@@ -779,10 +963,9 @@ export class GameScene extends Phaser.Scene {
       this.meta.stats.treasures += 1;
     }
 
-    // Uzun kelime ödülü: 6+ harfte görünür kutlama, 7+ ipucu ve zaman dondurma.
     if (len >= 6) {
       this.popup(cx, cy - 74, upper(t('game.longReward')), '#ffd166', 24);
-      this.confetti.emitParticleAt(cx, cy, 24 + len * 6);
+      this.confetti.emitParticleAt(cx, cy, 32 + len * 6);
       this.shockwave(cx, cy, 0xffd166);
       if (reward.hints > 0) {
         this.hintsLeft = Math.min(9, this.hintsLeft + reward.hints);
@@ -796,7 +979,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Kombo kilometre taşı: belirli kombolarda ekstra süre ve puan.
     const milestone = comboMilestone(this.combo);
     if (milestone) {
       this.score += milestone.points;
@@ -812,7 +994,6 @@ export class GameScene extends Phaser.Scene {
       play('star', 3);
     }
 
-    // Ateş sayacı dolar; dolunca ATEŞ MODU başlar.
     if (!fever) {
       this.feverMeter = Math.min(100, this.feverMeter + feverGain(len, bonusUsed.length) + reward.fever);
       if (this.feverMeter >= 100) this.startFever();
@@ -825,14 +1006,12 @@ export class GameScene extends Phaser.Scene {
       play('whoosh');
     }
 
-    // Rozet istatistikleri
     const st = this.meta.stats;
     st.totalWords += 1;
     st.longestWord = Math.max(st.longestWord, len);
     st.bestCombo = Math.max(st.bestCombo, this.maxCombo);
     if (result.joker) st.jokerWords += 1;
 
-    // Günlük görevler
     const missionsDone = addMissionProgress(this.meta, dayKey(Date.now()), {
       words: 1,
       long: len >= 6 ? 1 : 0,
@@ -875,14 +1054,11 @@ export class GameScene extends Phaser.Scene {
     play('invalid');
     haptic('error');
     this.cameras.main.shake(90, 0.0025);
-    // Geçersiz kelime komboyu bozar; kısa/tekrar denemeler bozmaz.
     if (result.reason === 'invalid' && this.combo > 0) {
       this.combo = 0;
       this.updateHud();
     }
   }
-
-  // ================= EFEKTLER =================
 
   private ring(x: number, y: number, color: number): void {
     const r = this.add
@@ -925,7 +1101,6 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Bulunan kelimenin yolu altın renkte parlayıp söner. */
   private flashPath(cells: number[]): void {
     const g = this.add.graphics().setDepth(9);
     g.lineStyle(12, 0xffd166, 0.95);
@@ -941,7 +1116,6 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: g, alpha: 0, duration: 420, onComplete: () => g.destroy() });
   }
 
-  /** Bonus peteğin mor dokusunu ve nabız atan yıldızını açar/kapatır. */
   private setBonus(i: number, on: boolean, delay = 0): void {
     const mark = this.bonusMarks[i];
     const img = this.hexViews[i];
@@ -986,15 +1160,28 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  /** Her kare: ateş sayacı, mod çerçevesi ve kombo çubuğu. */
   update(): void {
     if (!this.comboG) return;
     const now = this.time.now;
     const feverOn = now < this.feverUntil;
     const goldenOn = now < this.goldenUntil;
+    const frenzyOn = now < this.frenzyUntil;
+    const rainbowOn = now < this.rainbowUntil;
     const frozen = now < this.freezeUntil;
 
-    // Ateş modunda petekler sıcak tonda parlar.
+    // Petek dokuları güncelle (Gökkuşağı veya Frenzy renkleri)
+    for (let i = 0; i < this.hexViews.length; i++) {
+      const img = this.hexViews[i];
+      if (this.hexOnFlags[i]) continue;
+      if (rainbowOn) {
+        img.setTexture('hexRainbow');
+      } else if (frenzyOn) {
+        img.setTexture('hexFrenzy');
+      } else {
+        img.setTexture(this.baseTex(i));
+      }
+    }
+
     if (feverOn !== this.feverTinted) {
       this.feverTinted = feverOn;
       for (const img of this.hexViews) {
@@ -1002,6 +1189,7 @@ export class GameScene extends Phaser.Scene {
         else img.clearTint();
       }
     }
+
     const timeColor = frozen ? '#7dd3fc' : this.secondsLeft <= 10 ? PALETTE.danger : PALETTE.text;
     if (timeColor !== this.shownTimeColor) {
       this.shownTimeColor = timeColor;
@@ -1014,7 +1202,6 @@ export class GameScene extends Phaser.Scene {
     }
     if (feverOn) this.feverMeter = Math.max(0, (100 * (this.feverUntil - now)) / FEVER_MS);
 
-    // Ateş çubuğu (sağ üst)
     this.feverG.clear();
     this.feverG.fillStyle(0x24365f, 1);
     this.feverG.fillRoundedRect(W - 206, 130, 150, 6, 3);
@@ -1023,25 +1210,26 @@ export class GameScene extends Phaser.Scene {
       this.feverG.fillRoundedRect(W - 206, 130, Math.max(6, 1.5 * this.feverMeter), 6, 3);
     }
 
-    // Mod etiketi: ATEŞ / ATEŞ x2 / ALTIN x2 ...
-    const mult = multiplierFor(feverOn, goldenOn, false);
+    const mult = multiplierFor(feverOn, goldenOn, frenzyOn ? this.frenzyMult : 1, false);
     let label = upper(t('game.fever'));
-    if (mult > 1) label = `${feverOn ? upper(t('game.fever')) : upper(t('game.golden').replace('!', ''))}  x${mult}`;
+    if (frenzyOn) label = `FRENZY x${this.frenzyMult}!`;
+    else if (rainbowOn) label = 'GÖKKUŞAĞI!';
+    else if (mult > 1) label = `${feverOn ? upper(t('game.fever')) : upper(t('game.golden').replace('!', ''))}  x${mult}`;
     if (frozen) label = upper(t('game.frozen'));
+
     if (label !== this.shownMode) {
       this.shownMode = label;
-      this.modeText.setText(label).setColor(frozen ? '#7dd3fc' : mult > 1 ? PALETTE.accent2 : PALETTE.textDim);
+      this.modeText.setText(label).setColor(frozen ? '#7dd3fc' : frenzyOn ? '#ff3b30' : mult > 1 ? PALETTE.accent2 : PALETTE.textDim);
     }
 
-    // Ekran çerçevesi nabzı
     this.modeFx.clear();
-    if ((feverOn || goldenOn || frozen) && !this.ended) {
-      const a = 0.32 + 0.18 * Math.sin(now / 120);
-      this.modeFx.lineStyle(14, frozen ? 0x7dd3fc : feverOn ? 0xff6a3d : 0xffd166, a);
+    if ((feverOn || goldenOn || frenzyOn || rainbowOn || frozen) && !this.ended) {
+      const a = 0.35 + 0.2 * Math.sin(now / 110);
+      const color = frozen ? 0x7dd3fc : frenzyOn ? 0xff3b30 : rainbowOn ? 0x00ffcc : feverOn ? 0xff6a3d : 0xffd166;
+      this.modeFx.lineStyle(14, color, a);
       this.modeFx.strokeRect(7, 7, W - 14, H - 14);
     }
 
-    // Kombo çubuğu
     this.comboG.clear();
     if (this.combo <= 0 || this.ended) return;
     const left = 1 - (now - this.lastWordAt) / COMBO_WINDOW_MS;
@@ -1055,8 +1243,6 @@ export class GameScene extends Phaser.Scene {
     this.comboG.fillStyle(left < 0.3 ? 0xff5d6c : 0xff9f43, 1);
     this.comboG.fillRoundedRect(56, 130, Math.max(6, 150 * left), 6, 3);
   }
-
-  // ================= FIRSATLAR =================
 
   private baseTex(i: number): string {
     return this.jokers.has(i) ? 'hexJoker' : this.bonus.has(i) ? 'hexBonus' : 'hex';
@@ -1080,16 +1266,27 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.flash(200, 255, 120, 50);
   }
 
-  /** Süre eşiklerinde (≈%60 ve ≈%28) 8 sn'lik ALTIN AN: ekstra +1 çarpan. */
-  private maybeGolden(): void {
-    if (this.def.seconds < 60) return;
-    for (const frac of [0.6, 0.28]) {
-      const mark = Math.floor(this.def.seconds * frac);
-      if (this.secondsLeft === mark && !this.goldenFired.has(mark)) {
-        this.goldenFired.add(mark);
-        this.goldenUntil = this.time.now + GOLDEN_MS;
-        play('bonus');
-        this.banner(t('game.golden'), '#ffd166');
+  // Süre bazlı altın anlar ve sürpriz rastgele 2X/3X anları
+  private maybeGoldenOrFrenzy(): void {
+    const now = this.time.now;
+    if (this.def.seconds >= 50) {
+      for (const frac of [0.65, 0.35]) {
+        const mark = Math.floor(this.def.seconds * frac);
+        if (this.secondsLeft === mark && !this.goldenFired.has(mark)) {
+          this.goldenFired.add(mark);
+          // %50 şansla Altın An, %50 şansla Çılgın 2X veya 3X Fırtınası
+          if (this.rng.next() > 0.4) {
+            this.frenzyMult = this.rng.next() > 0.5 ? 3 : 2;
+            this.frenzyUntil = now + FRENZY_MS;
+            play('treasure');
+            this.banner(this.frenzyMult === 3 ? t('game.frenzy3x') : t('game.frenzy2x'), '#ff3b30');
+            this.cameras.main.flash(200, 255, 60, 60);
+          } else {
+            this.goldenUntil = now + GOLDEN_MS;
+            play('bonus');
+            this.banner(t('game.golden'), '#ffd166');
+          }
+        }
       }
     }
   }
@@ -1098,7 +1295,7 @@ export class GameScene extends Phaser.Scene {
     const tx = this.add
       .text(W / 2, 640, text, {
         fontFamily: FONT,
-        fontSize: '64px',
+        fontSize: '56px',
         color,
         fontStyle: 'bold',
         stroke: '#05070f',
@@ -1114,12 +1311,11 @@ export class GameScene extends Phaser.Scene {
       alpha: 0,
       y: 600,
       duration: 500,
-      delay: 1100,
+      delay: 1200,
       onComplete: () => tx.destroy(),
     });
   }
 
-  /** Hazine kelimesinin harfleri süre ilerledikçe açılır. */
   private refreshTreasure(): void {
     if (!this.treasureText) return;
     if (!this.treasure) {
@@ -1143,7 +1339,6 @@ export class GameScene extends Phaser.Scene {
       .setColor(found ? PALETTE.success : PALETTE.accent2);
   }
 
-  /** Kelimedeki her petek sırayla "patlar": zıplar, halka yayar, parçacık saçar. */
   private popCells(cells: number[], tier: number): void {
     cells.forEach((i, k) => {
       const p = this.posOf(i);
@@ -1164,7 +1359,6 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Büyük, ince bir şok dalgası halkası (uzun kelimelerde). */
   private shockwave(x: number, y: number, color: number): void {
     for (let k = 0; k < 2; k++) {
       const r = this.add
@@ -1186,7 +1380,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Kazanınca 3 sandıktan birini seç: XP ödülü. Süre dolarsa ortadaki açılır. */
   private pickChest(stars: number): Promise<number> {
     return new Promise((resolve) => {
       const values = chestValues(stars);
@@ -1305,8 +1498,6 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ================= ROZETLER =================
-
   private checkBadges(): void {
     const ids = newAchievements(this.meta);
     if (ids.length) {
@@ -1372,7 +1563,6 @@ export class GameScene extends Phaser.Scene {
   private refreshPath(): void {
     this.pathG.clear();
     if (this.path.length >= 2) {
-      // Tek renk, net kırmızı ip — seçilen peteklerin üstünde, harflerin altında.
       this.pathG.lineStyle(7, 0xff1744, 1);
       this.pathG.beginPath();
       const first = this.posOf(this.path[0]);
@@ -1382,7 +1572,6 @@ export class GameScene extends Phaser.Scene {
         this.pathG.lineTo(this.originX + p.x, this.originY + p.y);
       }
       this.pathG.strokePath();
-      // Bağlantı noktaları da kırmızı olsun ki yön daha net görünsün.
       this.pathG.fillStyle(0xff1744, 1);
       for (const i of this.path) {
         const p = this.posOf(i);
@@ -1401,12 +1590,10 @@ export class GameScene extends Phaser.Scene {
       const img = this.hexViews[i];
       const letter = this.letterTexts[i];
       const glow = this.hexGlows[i];
-
       const shadow = this.hexShadows[i];
       this.tweens.killTweensOf([img, letter, glow, shadow]);
 
       if (on) {
-        // Petek yerinden yükselir, altında gölge büyür: gerçek 3B basma hissi.
         img.setTexture('hexOn');
         this.ring(baseX, baseY, 0xffd166);
         img.setPosition(baseX, baseY + 5).setScale(0.9);
@@ -1463,7 +1650,6 @@ export class GameScene extends Phaser.Scene {
     const w = 480;
     const x = W / 2 - w / 2;
     const y = 168;
-    // Çubuk 0 → 2×hedef; yıldız işaretleri 1×, 1.4×, 2× noktalarında.
     const pct = Math.max(0, Math.min(1, this.score / (this.def.target * 2)));
     this.bar.clear();
     this.bar.fillStyle(0x0c1530, 1);
@@ -1502,16 +1688,18 @@ export class GameScene extends Phaser.Scene {
     }
     this.ended = true;
     this.timerEvent?.remove();
+    this.mascotTimer?.remove();
     setBackButton(null);
     this.scene.start('Menu');
   }
 
-  // ================= BİTİŞ =================
+  // ================= BİTİŞ & GELİŞMİŞ SONUÇ EKRANI =================
 
   private async endGame(): Promise<void> {
     if (this.ended) return;
     this.ended = true;
     this.timerEvent?.remove();
+    this.mascotTimer?.remove();
     this.clearPath();
     this.bridge.track('level_start_end', { level: this.level });
 
@@ -1519,7 +1707,6 @@ export class GameScene extends Phaser.Scene {
     const stars = starsFor(this.score, this.def.target);
     let xp = xpFor(this.level, this.score, stars);
 
-    // Günlük seri + günlük meydan okuma + rozetler
     const today = dayKey(Date.now());
     const day = touchDay(this.meta, today);
     this.meta.stats.plays += 1;
@@ -1548,7 +1735,6 @@ export class GameScene extends Phaser.Scene {
     haptic(won ? 'success' : 'error');
     this.cameras.main.flash(won ? 220 : 160, won ? 255 : 120, won ? 220 : 40, won ? 150 : 40);
 
-    // Kazanınca sandık seçimi: ekstra XP.
     if (won) {
       const chestXp = await this.pickChest(stars);
       xp += chestXp;
@@ -1561,7 +1747,6 @@ export class GameScene extends Phaser.Scene {
       const outcome = await this.bridge.finish({
         score: this.score,
         durationMs: Date.now() - this.startedAt,
-        // Günlük meydan okuma normal bölüm ilerlemesini etkilemez.
         level: this.daily ? 0 : won ? this.level : Math.max(0, this.level - 1),
         xp,
         stats: {
@@ -1577,7 +1762,7 @@ export class GameScene extends Phaser.Scene {
       });
       xpGained = outcome.xpGained;
     } catch {
-      /* bağlantı yoksa yerel sonuç */
+      /* bağlantı yoksa yerel */
     }
 
     this.showResult(won, stars, xpGained);
@@ -1590,21 +1775,23 @@ export class GameScene extends Phaser.Scene {
 
     const layer = this.add.container(0, 0).setDepth(200);
     const dim = this.add
-      .rectangle(0, 0, W, H, 0x03060d, 0.84)
+      .rectangle(0, 0, W, H, 0x03060d, 0.86)
       .setOrigin(0)
       .setInteractive();
     layer.add(dim);
 
-    const panelY = 380;
+    const panelY = 280;
+    const panelH = 740;
     const panel = this.add.graphics();
-    panel.fillStyle(0x101b30, 1);
-    panel.fillRoundedRect(70, panelY, W - 140, 520, 30);
-    panel.lineStyle(2, won ? 0x2f7a5f : 0x4a2130, 1);
-    panel.strokeRoundedRect(70, panelY, W - 140, 520, 30);
+    panel.fillStyle(0x101b30, 0.98);
+    panel.fillRoundedRect(50, panelY, W - 100, panelH, 32);
+    panel.lineStyle(2, won ? 0x2f7a5f : 0x7a2130, 1);
+    panel.strokeRoundedRect(50, panelY, W - 100, panelH, 32);
     layer.add(panel);
 
+    // Başlık
     const title = this.add
-      .text(W / 2, panelY + 58, upper(won ? t('game.won') : t('game.lost')), {
+      .text(W / 2, panelY + 46, upper(won ? t('game.won') : t('game.lost')), {
         fontFamily: FONT,
         fontSize: '36px',
         color: won ? PALETTE.success : PALETTE.danger,
@@ -1613,12 +1800,13 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     layer.add(title);
 
+    // Yıldızlar
     for (let i = 0; i < 3; i++) {
-      const x = W / 2 + (i - 1) * 96;
+      const x = W / 2 + (i - 1) * 88;
       const earned = i < stars;
       const star = this.add
-        .image(x, panelY + 152, 'star5')
-        .setDisplaySize(earned ? 72 : 56, earned ? 72 : 56)
+        .image(x, panelY + 118, 'star5')
+        .setDisplaySize(earned ? 66 : 50, earned ? 66 : 50)
         .setTint(earned ? 0xffd166 : 0x24365f)
         .setAlpha(earned ? 1 : 0.5);
       layer.add(star);
@@ -1626,7 +1814,7 @@ export class GameScene extends Phaser.Scene {
         star.setScale(0);
         this.tweens.add({
           targets: star,
-          scale: 72 / 64,
+          scale: 66 / 64,
           duration: 380,
           delay: 220 + i * 160,
           ease: 'Back.easeOut',
@@ -1634,35 +1822,98 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (this.resultNote) {
-      layer.add(
-        this.add
-          .text(W / 2, panelY + 188, this.resultNote, {
-            fontFamily: FONT,
-            fontSize: '15px',
-            color: PALETTE.accent2,
-            fontStyle: 'bold',
-            align: 'center',
-            wordWrap: { width: 500 },
-          })
-          .setOrigin(0.5, 0)
-      );
-    }
+    // Hedef vs Yapılan İlerleme Kartı
+    const targetBoxY = panelY + 170;
+    const targetPct = Math.round((this.score / this.def.target) * 100);
+    const targetStatusText = won
+      ? t('result.targetStatusSuccess', { pct: targetPct })
+      : t('result.targetStatusFail', { pts: fmtInt(this.def.target - this.score) });
 
+    const tBox = this.add.graphics();
+    tBox.fillStyle(0x0c1526, 0.9);
+    tBox.fillRoundedRect(80, targetBoxY, W - 160, 110, 18);
+    tBox.lineStyle(1.5, won ? 0x37e6a6 : 0xff5d6c, 0.6);
+    tBox.strokeRoundedRect(80, targetBoxY, W - 160, 110, 18);
+    layer.add(tBox);
+
+    layer.add(
+      this.add
+        .text(100, targetBoxY + 18, t('result.targetHeader'), {
+          fontFamily: FONT,
+          fontSize: '15px',
+          color: PALETTE.textDim,
+          fontStyle: 'bold',
+        })
+    );
+    layer.add(
+      this.add
+        .text(W - 100, targetBoxY + 18, fmtInt(this.def.target), {
+          fontFamily: FONT,
+          fontSize: '16px',
+          color: PALETTE.accent,
+          fontStyle: 'bold',
+        })
+        .setOrigin(1, 0)
+    );
+
+    // Hedef Doluluk Çubuğu
+    const barW = W - 200;
+    const barFill = Math.min(barW, Math.max(12, (barW * this.score) / this.def.target));
+    const barG = this.add.graphics();
+    barG.fillStyle(0x1a2942, 1);
+    barG.fillRoundedRect(100, targetBoxY + 48, barW, 14, 7);
+    barG.fillStyle(won ? 0x37e6a6 : 0xff5d6c, 1);
+    barG.fillRoundedRect(100, targetBoxY + 48, barFill, 14, 7);
+    layer.add(barG);
+
+    layer.add(
+      this.add
+        .text(W / 2, targetBoxY + 84, targetStatusText, {
+          fontFamily: FONT,
+          fontSize: '15px',
+          color: won ? PALETTE.success : PALETTE.danger,
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5)
+    );
+
+    // "Hedefi yaparsa ne olacak?" Bilgilendirme Kutusu
+    const whatNextY = targetBoxY + 125;
+    const whatNextText = won
+      ? t('result.rewardEarned', { stars, xp: xpGained })
+      : t('result.rewardMissed');
+
+    layer.add(
+      this.add
+        .text(W / 2, whatNextY, whatNextText, {
+          fontFamily: FONT,
+          fontSize: '14px',
+          color: won ? '#7dffe0' : '#ff9f43',
+          fontStyle: 'bold',
+          align: 'center',
+          wordWrap: { width: W - 180 },
+        })
+        .setOrigin(0.5, 0)
+    );
+
+    // İstatistik Tablosu
+    const statsY = whatNextY + 46;
     const lines: Array<[string, string, string]> = [
       [upper(t('common.score')), fmtInt(this.score), PALETTE.text],
-      [upper(t('common.target')), fmtInt(this.def.target), PALETTE.textDim],
       [upper(t('common.best')), fmtInt(best), PALETTE.accent],
       [upper(t('common.found')), `${this.found.size} ${t('common.words')}`, PALETTE.textDim],
-      [upper(t('common.xpEarned')), `+${xpGained}`, PALETTE.success],
+      ['EN İYİ KOMBO', `x${this.maxCombo}`, PALETTE.accent2],
+      ['EN UZUN KELİME', `${this.meta.stats.longestWord} harf`, PALETTE.textDim],
+      [upper(t('common.xpEarned')), `+${xpGained} XP`, PALETTE.success],
     ];
-    lines.forEach(([label, value, color], i) => {
-      const y = panelY + 244 + i * 42;
+
+    lines.forEach(([lbl, val, col], i) => {
+      const y = statsY + i * 36;
       layer.add(
         this.add
-          .text(110, y, label, {
+          .text(90, y, lbl, {
             fontFamily: FONT,
-            fontSize: '18px',
+            fontSize: '16px',
             color: PALETTE.textDim,
             fontStyle: 'bold',
           })
@@ -1670,16 +1921,17 @@ export class GameScene extends Phaser.Scene {
       );
       layer.add(
         this.add
-          .text(W - 110, y, value, {
+          .text(W - 90, y, val, {
             fontFamily: FONT,
-            fontSize: '22px',
-            color,
+            fontSize: '18px',
+            color: col,
             fontStyle: 'bold',
           })
           .setOrigin(1, 0.5)
       );
     });
 
+    // Butonlar
     const buttons: Array<{ label: string; primary?: boolean; action: () => void }> = [
       { label: upper(t('common.menu')), action: () => this.scene.start('Menu') },
       { label: upper(t('common.retry')), action: () => this.scene.restart({ level: this.level, daily: this.daily }) },
@@ -1694,33 +1946,23 @@ export class GameScene extends Phaser.Scene {
       buttons[1].primary = true;
     }
 
-    const totalW = W - 200;
+    const totalW = W - 160;
     const gap = 14;
     const bw = (totalW - gap * (buttons.length - 1)) / buttons.length;
     buttons.forEach((b, i) => {
-      const bx = 100 + i * (bw + gap) + bw / 2;
+      const bx = 80 + i * (bw + gap) + bw / 2;
       addButton(
         this,
         bx,
-        panelY + 470,
+        panelY + panelH - 65,
         bw,
-        64,
+        60,
         b.label,
-        { primary: b.primary, fontSize: 21, pulse: b.primary },
+        { primary: b.primary, fontSize: 19, pulse: b.primary },
         b.action,
         layer
       );
     });
-
-    layer.add(
-      this.add
-        .text(W / 2, panelY + 505, t('common.levelOf', { level: info.level, title: info.title }), {
-          fontFamily: FONT,
-          fontSize: '16px',
-          color: PALETTE.textDim,
-        })
-        .setOrigin(0.5)
-    );
 
     layer.setAlpha(0);
     this.tweens.add({ targets: layer, alpha: 1, duration: 260 });

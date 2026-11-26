@@ -1,3 +1,4 @@
+
 /** Kelime Avı metinleri — TR / EN. Tüm ekran metinleri burada. */
 
 import { registerStrings, type Dict } from '../../shared/game-kit/src/index.js';
@@ -11,8 +12,8 @@ export const STRINGS: Dict = {
 
   'game.howto': ['KOMŞU HARFLERİ BİRLEŞTİR', 'CONNECT NEIGHBOURING LETTERS'],
   'game.timeUp': ['SÜRE BİTTİ', 'TIME IS UP'],
-  'game.won': ['HEDEFE ULAŞTIN', 'TARGET REACHED'],
-  'game.lost': ['YENİDEN DENE', 'TRY AGAIN'],
+  'game.won': ['HEDEFE ULAŞTIN!', 'TARGET REACHED!'],
+  'game.lost': ['BÖLÜM TAMAMLANAMADI', 'LEVEL FAILED'],
   'game.foundWords': ['BULUNAN KELİMELER', 'FOUND WORDS'],
   'game.noWords': ['Henüz kelime yok', 'No words yet'],
   'game.levelLabel': ['BÖLÜM {n}', 'LEVEL {n}'],
@@ -24,6 +25,11 @@ export const STRINGS: Dict = {
   'game.fever': ['ATEŞ', 'FEVER'],
   'game.feverOn': ['ATEŞ MODU!', 'FEVER MODE!'],
   'game.golden': ['ALTIN AN!', 'GOLDEN MOMENT!'],
+  'game.frenzy2x': ['SÜRPRİZ 2X FIRTINASI!', 'SURPRISE 2X FRENZY!'],
+  'game.frenzy3x': ['ÇILGIN 3X FIRTINASI!', 'CRAZY 3X FRENZY!'],
+  'game.rainbowPetal': ['GÖKKUŞAĞI PETEKLERİ!', 'RAINBOW HONEYCOMB!'],
+  'game.mascotCaught': ['BAL ARISI ÖDÜLÜ! +150 PUAN', 'HONEY BEE BONUS! +150 PTS'],
+  'game.letterBonus': ['ÖZEL HARF BONUSU', 'SPECIAL LETTER BONUS'],
   'game.treasure': ['HAZİNE', 'TREASURE'],
   'game.treasureFound': ['HAZİNE BULUNDU!', 'TREASURE FOUND!'],
   'game.joker': ['JOKER!', 'JOKER!'],
@@ -47,7 +53,7 @@ export const STRINGS: Dict = {
   'ach.streak3': ['3 Günlük Seri', '3-Day Streak'],
   'ach.daily1': ['Günlük Şampiyon', 'Daily Champion'],
   'game.frozen': ['ZAMAN DONDU', 'TIME FROZEN'],
-  'game.longReward': ['UZUN KELİME ÖDÜLÜ', 'LONG WORD REWARD'],
+  'game.longReward': ['UZUN KELİME SÜRPRİZİ!', 'LONG WORD REWARD!'],
   'game.hintGain': ['+{n} İPUCU', '+{n} HINT'],
   'game.comboMilestone': ['KOMBO x{n}!', 'COMBO x{n}!'],
   'game.chestTitle': ['BİR SANDIK SEÇ', 'PICK A CHEST'],
@@ -64,6 +70,35 @@ export const STRINGS: Dict = {
   'game.hintNone': ['İpucu kalmadı', 'No hints left'],
   'game.hintEmpty': ['Gösterilecek ipucu yok', 'No hint available'],
   'game.minLength': ['En az {n} harf', 'At least {n} letters'],
+
+  // İnteraktif Yardım Kartı
+  'guide.title': ['NASIL OYNANIR & İPUÇLARI', 'HOW TO PLAY & TIPS'],
+  'guide.comboDesc': [
+    '• KOMBO: 7 sn içinde ardışık kelime bularak çarpanını katla! 3, 5, 8 kombolarda süre ve büyük puan kazanırsın.',
+    '• COMBO: Find words within 7s to boost multiplier! Earn extra time and bonus pts at 3, 5, 8 combos.',
+  ],
+  'guide.hintDesc': [
+    '• KOPYA (İPUCU): Tıkladığında tahtadaki gizli bir kelimenin ilk 2 harfini ve yönünü çizer.',
+    '• HINT: Highlights the first 2 letters and path of a hidden word.',
+  ],
+  'guide.frenzyDesc': [
+    '• SÜRPRİZ 2X/3X: Rastgele beliren çılgın anlarda tüm puanların 2 veya 3 katına çıkar!',
+    '• SURPRISE 2X/3X: Random frenzy moments multiply all word points by 2x or 3x!',
+  ],
+  'guide.beeDesc': [
+    '• SEVİMLİ BAL ARISI: Petekler arasında uçan arıya dokun veya kelimende kullan, sürpriz puanı kap!',
+    '• HONEY BEE: Tap or connect the flying bee to claim surprise bonus points!',
+  ],
+  'guide.close': ['ANLADIM, DEVAM ET', 'GOT IT, CONTINUE'],
+
+  // Net Sonuç Ekranı Detayları
+  'result.targetHeader': ['BEKLENEN HEDEF PUAN', 'TARGET SCORE'],
+  'result.yourScore': ['TOPLANAN PUAN', 'YOUR SCORE'],
+  'result.targetStatusSuccess': ['HEDEF AŞILDI (%{pct})', 'TARGET PASSED (%{pct})'],
+  'result.targetStatusFail': ['HEDEFE {pts} PUAN KALDI', '{pts} PTS NEEDED FOR TARGET'],
+  'result.rewardEarned': ['KAZANILAN: Yeni Bölüm Kilidi + {stars} Yıldız + {xp} XP', 'EARNED: Next Level + {stars} Stars + {xp} XP'],
+  'result.rewardMissed': ['Hedefi geçersen sandık açılır ve yeni seviye kilidi kalkar!', 'Beat the target to unlock chests and next levels!'],
+  'result.statsHeader': ['PERFORMANS ÖZETİ', 'PERFORMANCE SUMMARY'],
 };
 
 registerStrings(STRINGS);

@@ -1,16 +1,6 @@
+
 import Phaser from 'phaser';
 import { HEX_SIZE } from '../theme.js';
-
-/**
- * Görseller kodla üretilir — asset dosyası yok.
- *
- * Petek artık gerçek bir "3B karo": yumuşak zemin gölgesi, kalın yan duvar
- * (extrude), radyal degrade üst yüzey, ışığa göre aydınlık/karanlık bevel
- * kenarlar, cam parlaması ve speküler nokta. Işık sol üstten gelir.
- *
- * Dokular: 'hex' (buzlu cam), 'hexOn' (yanan kehribar), 'hexBonus' (mor bonus),
- * 'dot' (yumuşak ışık), 'spark' (parçacık), 'ring' (dalga), 'star5' (yıldız).
- */
 
 interface HexStyle {
   shadow: number;
@@ -33,7 +23,7 @@ function mix(a: number, b: number, f: number): number {
   return (
     (Math.round(ar + (br - ar) * k) << 16) |
     (Math.round(ag + (bg - ag) * k) << 8) |
-    Math.round(ab + (bb - ab) * k)
+    Math.round(ab + (bb - ar) * k)
   );
 }
 
@@ -74,6 +64,24 @@ const STYLES: Record<string, HexStyle> = {
     rimLight: 0xf6dcff,
     rimDark: 0x3d1670,
   },
+  hexRainbow: {
+    shadow: 0x1a052b,
+    wallDark: 0x5c0979,
+    wall: 0x00d2ff,
+    faceEdge: 0x9b51e0,
+    faceCenter: 0x00ffcc,
+    rimLight: 0xffffff,
+    rimDark: 0x7928ca,
+  },
+  hexFrenzy: {
+    shadow: 0x3d0000,
+    wallDark: 0x8a0000,
+    wall: 0xff3b30,
+    faceEdge: 0xff9500,
+    faceCenter: 0xffea00,
+    rimLight: 0xffffff,
+    rimDark: 0xcc0000,
+  },
 };
 
 export class BootScene extends Phaser.Scene {
@@ -84,6 +92,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     this.buildHexes();
     this.buildFx();
+    this.buildMascot();
     this.scene.start('Menu');
   }
 
@@ -108,20 +117,20 @@ export class BootScene extends Phaser.Scene {
     const g = this.make.graphics({ x: 0, y: 0 }, false);
     const poly = (r: number, ox = 0, oy = 0) => this.hexPoints(c + ox, cy + oy, r);
 
-    // 1) Yumuşak zemin gölgesi (birkaç genişleyen katman)
+    // 1) Yumuşak zemin gölgesi
     for (let k = 5; k >= 0; k--) {
       g.fillStyle(p.shadow, 0.08);
       g.fillPoints(poly(R + k * 1.4, 0, 9 + k * 0.6), true);
     }
 
-    // 2) Kalınlık: alta doğru koyulaşan yan duvar
+    // 2) Kalınlık: yan duvar
     const depth = 9;
     for (let d = depth; d >= 1; d--) {
       g.fillStyle(mix(p.wallDark, p.wall, (depth - d) / depth), 1);
       g.fillPoints(poly(R, 0, d), true);
     }
 
-    // 3) Üst yüzey: dıştan içe radyal degrade, merkez sol-üste kayık (ışık yönü)
+    // 3) Üst yüzey: radyal degrade
     const steps = 16;
     for (let s = 0; s < steps; s++) {
       const f = s / (steps - 1);
@@ -129,7 +138,7 @@ export class BootScene extends Phaser.Scene {
       g.fillPoints(poly(R * (1 - f * 0.84), -f * 5, -f * 6), true);
     }
 
-    // 4) Bevel: ışığa dönük kenarlar parlak, uzak kenarlar koyu
+    // 4) Bevel: kenarlar
     const top = poly(R);
     const lightAngle = -Math.PI * 0.75;
     for (let k = 0; k < 6; k++) {
@@ -141,11 +150,11 @@ export class BootScene extends Phaser.Scene {
       g.lineBetween(a.x, a.y, b.x, b.y);
     }
 
-    // 5) İnce iç çerçeve (cam derinliği)
+    // 5) İnce iç çerçeve
     g.lineStyle(1.5, p.rimLight, 0.22);
     g.strokePoints(poly(R * 0.76, -1, -2), true);
 
-    // 6) Cam parlaması: üst yarıda yarı saydam beyaz
+    // 6) Cam parlaması
     const gl = poly(R * 0.93, 0, -1);
     g.fillStyle(0xffffff, 0.13);
     g.fillPoints(
@@ -170,10 +179,37 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
+  private buildMascot(): void {
+    // Sevimli Arı Maskotu Dokusu (Petekler üzerinde gezen karakter)
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+    // Gövde (Sarı & Siyah şeritler)
+    g.fillStyle(0xffd166, 1);
+    g.fillEllipse(32, 34, 40, 30);
+    g.fillStyle(0x1a1a24, 1);
+    g.fillRect(24, 20, 5, 28);
+    g.fillRect(35, 20, 5, 28);
+    // Gözler
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(44, 30, 4);
+    g.fillStyle(0x000000, 1);
+    g.fillCircle(45, 30, 2);
+    // Yanak allığı
+    g.fillStyle(0xff6b8b, 0.6);
+    g.fillCircle(42, 36, 3);
+    // Kanatlar (Yarı saydam beyaz-mavi)
+    g.fillStyle(0xdcf8ff, 0.85);
+    g.fillEllipse(28, 16, 18, 12);
+    g.fillEllipse(36, 14, 14, 10);
+    g.lineStyle(1.5, 0xffffff, 1);
+    g.strokeEllipse(28, 16, 18, 12);
+    g.generateTexture('mascotBee', 64, 64);
+    g.destroy();
+  }
+
   private buildFx(): void {
     const g = this.make.graphics({ x: 0, y: 0 }, false);
 
-    // Parçacık: parlak çekirdekli küçük nokta
+    // Parçacık
     g.fillStyle(0xffffff, 0.35);
     g.fillCircle(8, 8, 8);
     g.fillStyle(0xffffff, 1);
@@ -181,7 +217,7 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('spark', 16, 16);
     g.clear();
 
-    // Yumuşak ışık: üst üste binen, giderek küçülen halkalar
+    // Yumuşak ışık
     for (let i = 0; i < 18; i++) {
       g.fillStyle(0xffffff, 0.12);
       g.fillCircle(16, 16, 16 - i * 0.85);
