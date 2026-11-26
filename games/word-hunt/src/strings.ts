@@ -25,9 +25,9 @@ export const STRINGS: Dict = {
   'game.fever': ['ATEŞ', 'FEVER'],
   'game.feverOn': ['ATEŞ MODU!', 'FEVER MODE!'],
   'game.golden': ['ALTIN AN!', 'GOLDEN MOMENT!'],
-  'game.frenzy2x': ['SÜRPRİZ 2X FIRTINASI!', 'SURPRISE 2X FRENZY!'],
-  'game.frenzy3x': ['ÇILGIN 3X FIRTINASI!', 'CRAZY 3X FRENZY!'],
-  'game.rainbowPetal': ['GÖKKUŞAĞI PETEKLERİ!', 'RAINBOW HONEYCOMB!'],
+  'game.frenzy2x': ['2X ÇARPAN MODU!', '2X MULTIPLIER MODE!'],
+  'game.frenzy3x': ['3X ÇARPAN MODU!', '3X MULTIPLIER MODE!'],
+  'game.rainbowPetal': ['AURORA PETEKLERİ!', 'AURORA HONEYCOMB!'],
   'game.mascotCaught': ['BAL ARISI ÖDÜLÜ! +150 PUAN', 'HONEY BEE BONUS! +150 PTS'],
   'game.letterBonus': ['ÖZEL HARF BONUSU', 'SPECIAL LETTER BONUS'],
   'game.treasure': ['HAZİNE', 'TREASURE'],
@@ -65,33 +65,33 @@ export const STRINGS: Dict = {
   'mis.long': ['2 uzun kelime', '2 long words'],
   'menu.missions': ['GÜNLÜK GÖREVLER', 'DAILY MISSIONS'],
   'game.hint': ['İPUCU', 'HINT'],
-  'game.hintLeft': ['İPUCU {n}', 'HINT {n}'],
-  'game.hintLength': ['{n} harfli bir kelime var', 'There is a {n}-letter word'],
-  'game.hintNone': ['İpucu kalmadı', 'No hints left'],
+  'game.hintLeft': ['İPUCU ({n})', 'HINT ({n})'],
+  'game.hintLength': ['{n} harfli gizli bir kelime bulundu', 'Found a hidden {n}-letter word'],
+  'game.hintNone': ['İpucu kalmadı (Uzun kelime bularak kazan!)', 'No hints left (Find long words to earn!)'],
   'game.hintEmpty': ['Gösterilecek ipucu yok', 'No hint available'],
   'game.minLength': ['En az {n} harf', 'At least {n} letters'],
 
-  // İnteraktif Yardım Kartı
-  'guide.title': ['NASIL OYNANIR & İPUÇLARI', 'HOW TO PLAY & TIPS'],
-  'guide.comboDesc': [
-    '• KOMBO: 7 sn içinde ardışık kelime bularak çarpanını katla! 3, 5, 8 kombolarda süre ve büyük puan kazanırsın.',
-    '• COMBO: Find words within 7s to boost multiplier! Earn extra time and bonus pts at 3, 5, 8 combos.',
+  // Şık ve derli toplu Kurallar / Özellikler Kartı
+  'guide.title': ['ÖZELLİKLER & DETAYLAR', 'FEATURES & DETAILS'],
+  'guide.beeDesc': [
+    '• BAL ARISI MASKOTU: Arada bir tek bir petekte belirir. Dikkat dağıtmaz; dokunursan veya kelimende kullanırsan +150 puan ve +3 sn hediye eder.',
+    '• HONEY BEE: Appears occasionally on a single tile. Tap it or connect it in a word to earn +150 pts and +3s bonus.',
   ],
-  'guide.hintDesc': [
-    '• KOPYA (İPUCU): Tıkladığında tahtadaki gizli bir kelimenin ilk 2 harfini ve yönünü çizer.',
-    '• HINT: Highlights the first 2 letters and path of a hidden word.',
+  'guide.comboDesc': [
+    '• KOMBO ÇARPANI: 7 saniye içinde yeni kelimeler bularak komboyu sürdür! 3, 5, 8 kombolarda ek süre ve puan kazandırır.',
+    '• COMBO: Find words within 7s to maintain combo and earn extra bonus time and points.',
   ],
   'guide.frenzyDesc': [
-    '• SÜRPRİZ 2X/3X: Rastgele beliren çılgın anlarda tüm puanların 2 veya 3 katına çıkar!',
-    '• SURPRISE 2X/3X: Random frenzy moments multiply all word points by 2x or 3x!',
+    '• 2X / 3X ÇARPAN ANLARI: Oyunun belirli anlarında devreye girer; bu esnada bulduğun tüm kelimelerin puanı katlanır.',
+    '• 2X / 3X MULTIPLIER: Triggers at key intervals to multiply all word points.',
   ],
-  'guide.beeDesc': [
-    '• SEVİMLİ BAL ARISI: Petekler arasında uçan arıya dokun veya kelimende kullan, sürpriz puanı kap!',
-    '• HONEY BEE: Tap or connect the flying bee to claim surprise bonus points!',
+  'guide.longWordsDesc': [
+    '• UZUN KELİMELER: 6+ harfli kelimeler petekleri büyüleyici aurora rengine boyar, zamanı dondurur ve bedava İPUCU kazandırır.',
+    '• LONG WORDS: Words with 6+ letters trigger aurora tiles, freeze time, and award free hints.',
   ],
-  'guide.close': ['ANLADIM, DEVAM ET', 'GOT IT, CONTINUE'],
+  'guide.close': ['KAPAT', 'CLOSE'],
 
-  // Net Sonuç Ekranı Detayları
+  // Sonuç Ekranı ve Uzun Kelime Şovu
   'result.targetHeader': ['BEKLENEN HEDEF PUAN', 'TARGET SCORE'],
   'result.yourScore': ['TOPLANAN PUAN', 'YOUR SCORE'],
   'result.targetStatusSuccess': ['HEDEF AŞILDI (%{pct})', 'TARGET PASSED (%{pct})'],
@@ -99,6 +99,7 @@ export const STRINGS: Dict = {
   'result.rewardEarned': ['KAZANILAN: Yeni Bölüm Kilidi + {stars} Yıldız + {xp} XP', 'EARNED: Next Level + {stars} Stars + {xp} XP'],
   'result.rewardMissed': ['Hedefi geçersen sandık açılır ve yeni seviye kilidi kalkar!', 'Beat the target to unlock chests and next levels!'],
   'result.statsHeader': ['PERFORMANS ÖZETİ', 'PERFORMANCE SUMMARY'],
+  'result.bestWordsHeader': ['BÖLÜMDE BULDUĞUN EN İYİ KELİMELER', 'BEST WORDS FOUND THIS LEVEL'],
 };
 
 registerStrings(STRINGS);

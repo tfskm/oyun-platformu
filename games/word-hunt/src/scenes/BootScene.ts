@@ -23,28 +23,30 @@ function mix(a: number, b: number, f: number): number {
   return (
     (Math.round(ar + (br - ar) * k) << 16) |
     (Math.round(ag + (bg - ag) * k) << 8) |
-    Math.round(ab + (bb - ar) * k)
+    Math.round(ab + (bb - ab) * k)
   );
 }
 
+// Göz yormayan, modern, derin lacivert, pastel zümrüt, yumuşak safir ve aurora renkleri
 const STYLES: Record<string, HexStyle> = {
   hex: {
     shadow: 0x02070f,
-    wallDark: 0x04202a,
-    wall: 0x0e5964,
-    faceEdge: 0x155064,
-    faceCenter: 0x44bcbd,
-    rimLight: 0xc4fff4,
-    rimDark: 0x0a3140,
+    wallDark: 0x051d2f,
+    wall: 0x0a4366,
+    faceEdge: 0x0f4c6e,
+    faceCenter: 0x2289a6,
+    rimLight: 0xa5f3fc,
+    rimDark: 0x082b40,
   },
   hexOn: {
-    shadow: 0x3a2200,
-    wallDark: 0x6b3d00,
-    wall: 0xc98a1c,
-    faceEdge: 0xe2a22c,
-    faceCenter: 0xfff1bd,
-    rimLight: 0xffffff,
-    rimDark: 0xb4761a,
+    // Seçildiğinde göz yormayan asil Turkuaz / Berrak Zümrüt parlaması
+    shadow: 0x02241e,
+    wallDark: 0x044238,
+    wall: 0x0d826e,
+    faceEdge: 0x14b8a6,
+    faceCenter: 0x5eead4,
+    rimLight: 0xf0fdfa,
+    rimDark: 0x0f766e,
   },
   hexJoker: {
     shadow: 0x1f0414,
@@ -56,31 +58,33 @@ const STYLES: Record<string, HexStyle> = {
     rimDark: 0x7a1d4d,
   },
   hexBonus: {
-    shadow: 0x12041f,
-    wallDark: 0x25093f,
-    wall: 0x5a2496,
-    faceEdge: 0x6d2bb0,
-    faceCenter: 0xd791ff,
-    rimLight: 0xf6dcff,
-    rimDark: 0x3d1670,
+    shadow: 0x0f0b29,
+    wallDark: 0x1f1654,
+    wall: 0x4f46e5,
+    faceEdge: 0x6366f1,
+    faceCenter: 0xa5b4fc,
+    rimLight: 0xe0e7ff,
+    rimDark: 0x3730a3,
   },
   hexRainbow: {
-    shadow: 0x1a052b,
-    wallDark: 0x5c0979,
-    wall: 0x00d2ff,
-    faceEdge: 0x9b51e0,
-    faceCenter: 0x00ffcc,
-    rimLight: 0xffffff,
-    rimDark: 0x7928ca,
+    // Uzun kelimede gözü dinlendiren degrade Aurora paleti
+    shadow: 0x03182b,
+    wallDark: 0x0d415b,
+    wall: 0x0284c7,
+    faceEdge: 0x06b6d4,
+    faceCenter: 0x67e8f9,
+    rimLight: 0xf0fdfa,
+    rimDark: 0x0e7490,
   },
   hexFrenzy: {
-    shadow: 0x3d0000,
-    wallDark: 0x8a0000,
-    wall: 0xff3b30,
-    faceEdge: 0xff9500,
-    faceCenter: 0xffea00,
-    rimLight: 0xffffff,
-    rimDark: 0xcc0000,
+    // Çarpan modunda yumuşak menekşe / neon lila
+    shadow: 0x1a052b,
+    wallDark: 0x4c0570,
+    wall: 0x9333ea,
+    faceEdge: 0xa855f7,
+    faceCenter: 0xe9d5ff,
+    rimLight: 0xfdf4ff,
+    rimDark: 0x7e22ce,
   },
 };
 
@@ -180,28 +184,28 @@ export class BootScene extends Phaser.Scene {
   }
 
   private buildMascot(): void {
-    // Sevimli Arı Maskotu Dokusu (Petekler üzerinde gezen karakter)
+    // Sevimli ve zarif Arı Maskotu
     const g = this.make.graphics({ x: 0, y: 0 }, false);
-    // Gövde (Sarı & Siyah şeritler)
-    g.fillStyle(0xffd166, 1);
-    g.fillEllipse(32, 34, 40, 30);
-    g.fillStyle(0x1a1a24, 1);
-    g.fillRect(24, 20, 5, 28);
-    g.fillRect(35, 20, 5, 28);
+    // Gövde
+    g.fillStyle(0x38bdf8, 1);
+    g.fillEllipse(32, 34, 38, 28);
+    g.fillStyle(0x0f172a, 0.85);
+    g.fillRect(25, 22, 5, 24);
+    g.fillRect(34, 22, 5, 24);
     // Gözler
     g.fillStyle(0xffffff, 1);
-    g.fillCircle(44, 30, 4);
-    g.fillStyle(0x000000, 1);
-    g.fillCircle(45, 30, 2);
+    g.fillCircle(43, 30, 4);
+    g.fillStyle(0x0f172a, 1);
+    g.fillCircle(44, 30, 2);
     // Yanak allığı
-    g.fillStyle(0xff6b8b, 0.6);
-    g.fillCircle(42, 36, 3);
-    // Kanatlar (Yarı saydam beyaz-mavi)
-    g.fillStyle(0xdcf8ff, 0.85);
-    g.fillEllipse(28, 16, 18, 12);
-    g.fillEllipse(36, 14, 14, 10);
+    g.fillStyle(0xf472b6, 0.5);
+    g.fillCircle(41, 35, 3);
+    // Kanatlar
+    g.fillStyle(0xe0f2fe, 0.9);
+    g.fillEllipse(27, 17, 18, 12);
+    g.fillEllipse(35, 15, 14, 10);
     g.lineStyle(1.5, 0xffffff, 1);
-    g.strokeEllipse(28, 16, 18, 12);
+    g.strokeEllipse(27, 17, 18, 12);
     g.generateTexture('mascotBee', 64, 64);
     g.destroy();
   }
