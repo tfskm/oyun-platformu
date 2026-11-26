@@ -1,9 +1,6 @@
 /** Seviye eğrisi ve puan kuralları — hepsi tek yerde. */
 
-export const MAX_LEVEL = 60;
-/** Her dünya 10 bölüm; 10'un katları patron bölümüdür. */
-export const LEVELS_PER_WORLD = 10;
-export const WORLD_COUNT = 6;
+export const MAX_LEVEL = 30;
 
 export interface LevelDef {
   level: number;
@@ -11,29 +8,6 @@ export interface LevelDef {
   seconds: number;
   minLength: number;
   plantCount: number;
-  /** Ekilecek kelimelerin uzunluk aralığı. */
-  plantMin: number;
-  plantMax: number;
-  /** Patron bölümü: daha yüksek hedef, ek süre. */
-  boss: boolean;
-  /** Görev: bu uzunlukta (veya daha uzun) bir kelime bul → süre + puan ödülü. */
-  questLen: number;
-  /** Dünya sırası 0..5 */
-  world: number;
-}
-
-export function worldOf(level: number): number {
-  return Math.min(WORLD_COUNT - 1, Math.floor((Math.max(1, level) - 1) / LEVELS_PER_WORLD));
-}
-
-export function isBoss(level: number): boolean {
-  return level > 0 && level % LEVELS_PER_WORLD === 0;
-}
-
-/** Görev ödülü. */
-export const QUEST_SECONDS = 5;
-export function questScore(level: number): number {
-  return 150 + level * 20;
 }
 
 /** Bölüm başına ipucu hakkı. */
@@ -41,20 +15,12 @@ export const HINTS_PER_LEVEL = 3;
 
 export function levelDef(level: number): LevelDef {
   const lv = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level)));
-  const boss = isBoss(lv);
-  const minLength = lv <= 4 ? 3 : lv <= 12 ? 4 : 5;
-  const plantMax = lv < 5 ? 5 : lv < 15 ? 6 : lv < 30 ? 7 : 8;
   return {
     level: lv,
-    target: 400 + (lv - 1) * 180 + (boss ? 90 : 0),
-    seconds: Math.max(60, 100 - Math.floor((lv - 1) * 0.8)) + (boss ? 15 : 0),
-    minLength,
-    plantCount: Math.min(16, 7 + Math.floor(lv / 3)),
-    plantMin: minLength,
-    plantMax,
-    boss,
-    questLen: Math.min(9, minLength + 2 + (boss ? 1 : 0) + Math.floor(lv / 25)),
-    world: worldOf(lv),
+    target: 400 + (lv - 1) * 180,
+    seconds: Math.max(55, 100 - (lv - 1) * 2),
+    minLength: lv <= 4 ? 3 : lv <= 12 ? 4 : 5,
+    plantCount: Math.min(16, 7 + Math.floor(lv / 2)),
   };
 }
 
@@ -65,19 +31,81 @@ export const BONUS_SECONDS = 2;
 /** Süre en fazla bölüm süresinin bu kadar üstüne çıkabilir (sn). */
 export const MAX_EXTRA_SECONDS = 30;
 
-/** Tahtadaki bonus petek sayısı. */
-export function bonusCount(level: number): number {
-  return Math.min(6, 3 + Math.floor(level / 12));
+/** Ateş modu süresi (ms) ve doluma gereken ölçek. */
+export const FEVER_MS = 8000;
+/** Altın an süresi (ms): bu sürede puan +1 çarpan alır. */
+export const GOLDEN_MS = 8000;
+
+/** Ateş sayacına kelimeden gelen doluluk (0-100). */
+export function feverGain(length: number, bonusCells: number): number {
+  return length * 8 + bonusCells * 10;
 }
 
-/** Kelime uzunluğuna göre övgü seviyesi: 0 iyi, 1 güzel, 2 harika, 3 efsane, 4 muhteşem (9+). */
-export function tierFor(length: number): 0 | 1 | 2 | 3 | 4 {
-  return length >= 9 ? 4 : length >= 7 ? 3 : length >= 6 ? 2 : length >= 5 ? 1 : 0;
+/** Çarpan: ateş +1, altın an +1, hazine kelimesi +2 (en fazla x4). */
+export function multiplierFor(fever: boolean, golden: boolean, treasure: boolean): number {
+  return 1 + (fever ? 1 : 0) + (golden ? 1 : 0) + (treasure ? 2 : 0);
+}
+
+/** Uzun kelime ödül tablosu: 5 harften itibaren kademeli artar. */
+export interface LengthReward {
+  /** Doğrudan eklenen puan (çarpandan bağımsız). */
+  points: number;
+  /** Kazanılan ipucu hakkı. */
+  hints: number;
+  /** Zamanı dondurma süresi (ms). */
+  freezeMs: number;
+  /** Ateş sayacına ek doluluk. */
+  fever: number;
+}
+
+export function lengthReward(length: number): LengthReward {
+  if (length >= 8) return { points: 700, hints: 1, freezeMs: 5000, fever: 50 };
+  if (length === 7) return { points: 300, hints: 1, freezeMs: 3000, fever: 35 };
+  if (length === 6) return { points: 120, hints: 0, freezeMs: 0, fever: 20 };
+  if (length === 5) return { points: 40, hints: 0, freezeMs: 0, fever: 10 };
+  return { points: 0, hints: 0, freezeMs: 0, fever: 0 };
+}
+
+/** Kombo kilometre taşları: tam bu kombo sayısına ulaşınca bir kez verilir. */
+export function comboMilestone(combo: number): { seconds: number; points: number } | null {
+  switch (combo) {
+    case 3:
+      return { seconds: 1, points: 50 };
+    case 5:
+      return { seconds: 2, points: 150 };
+    case 8:
+      return { seconds: 3, points: 400 };
+    case 12:
+      return { seconds: 5, points: 1000 };
+    default:
+      return null;
+  }
+}
+
+/** Sandık ödülü (XP): yıldız sayısı kadar büyür. */
+export function chestValues(stars: number): number[] {
+  const k = 1 + (Math.max(1, Math.min(3, stars)) - 1) * 0.25;
+  return [10, 25, 60].map((v) => Math.round(v * k));
+}
+
+/** Tahtadaki joker sayısı: 3. bölümden itibaren 1, 15'ten itibaren 2. */
+export function jokerCount(level: number): number {
+  return level < 3 ? 0 : level < 15 ? 1 : 2;
+}
+
+/** Tahtadaki bonus petek sayısı. */
+export function bonusCount(level: number): number {
+  return Math.min(5, 3 + Math.floor(level / 10));
+}
+
+/** Kelime uzunluğuna göre övgü seviyesi: 0 iyi, 1 güzel, 2 harika, 3 efsane. */
+export function tierFor(length: number): 0 | 1 | 2 | 3 {
+  return length >= 7 ? 3 : length >= 6 ? 2 : length >= 5 ? 1 : 0;
 }
 
 /** Uzun kelime ve bonus petek süre kazandırır. */
 export function timeBonusFor(length: number, bonusCells: number): number {
-  return (length >= 5 ? 1 : 0) + (length >= 7 ? 1 : 0) + (length >= 9 ? 2 : 0) + bonusCells * BONUS_SECONDS;
+  return (length >= 5 ? 1 : 0) + (length >= 7 ? 1 : 0) + bonusCells * BONUS_SECONDS;
 }
 
 export function scoreWord(length: number, combo: number, level: number, bonusCells = 0): number {

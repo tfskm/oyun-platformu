@@ -26,7 +26,12 @@ export type SfxName =
   | 'hint'
   | 'bonus'
   | 'star'
-  | 'whoosh';
+  | 'whoosh'
+  | 'treasure'
+  | 'fever'
+  | 'badge'
+  | 'freeze'
+  | 'pop';
 
 let ctx: AudioContext | null = null;
 let bus: GainNode | null = null;
@@ -222,6 +227,29 @@ export function play(name: SfxName, combo = 1): void {
       tone(f, 0.45, 'triangle', 0.06);
       tone(f * 2, 0.55, 'sine', 0.025, 0.02);
       tone(f * 3, 0.35, 'sine', 0.012, 0.04);
+      break;
+    }
+    case 'treasure':
+      [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568].forEach((f, i) => tone(f, 0.3, 'triangle', 0.06, i * 0.07));
+      tone(2093, 0.8, 'sine', 0.04, 0.45);
+      noise(0.6, 0.03, 2000, 9000, 0.3);
+      break;
+    case 'fever':
+      tone(330, 0.5, 'sawtooth', 0.03, 0, 990);
+      tone(660, 0.5, 'triangle', 0.04, 0.05, 1980);
+      noise(0.5, 0.04, 300, 6000);
+      break;
+    case 'badge':
+      [784, 988, 1175].forEach((f, i) => tone(f, 0.22, 'sine', 0.05, i * 0.08));
+      tone(1568, 0.5, 'triangle', 0.03, 0.26);
+      break;
+    case 'freeze':
+      [2637, 2093, 1568, 1046.5].forEach((f, i) => tone(f, 0.45, 'sine', 0.035, i * 0.05));
+      noise(0.4, 0.02, 7000, 2500);
+      break;
+    case 'pop': {
+      const f = 700 * step(Math.min(14, combo - 1));
+      tone(f, 0.07, 'triangle', 0.05, 0, f * 0.5);
       break;
     }
     case 'whoosh':

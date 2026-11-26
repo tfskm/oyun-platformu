@@ -95,9 +95,7 @@ export function generateBoard(
   rng: Rng,
   lang: WordLang,
   plantCount: number,
-  rows: number = ROWS,
-  minLen = 3,
-  maxLen = 6
+  rows: number = ROWS
 ): GeneratedBoard {
   const pool = POOLS[lang];
   const cells: Board = [];
@@ -105,9 +103,9 @@ export function generateBoard(
     cells.push({ letter: pool[rng.int(0, pool.length)] });
   }
 
-  const candidates = plantWords(lang, minLen, maxLen);
+  const candidates = plantWords(lang);
   const planted: string[] = [];
-  const shuffled = rng.shuffle([...candidates]).slice(0, plantCount * 6);
+  const shuffled = rng.shuffle([...candidates]).slice(0, plantCount * 3);
   for (const word of shuffled) {
     if (planted.length >= plantCount) break;
     if (placeWord(cells, word, rng, rows, planted)) planted.push(word);
@@ -179,6 +177,8 @@ export interface CheckResult {
   ok: boolean;
   reason: CheckReason;
   word: string;
+  /** Kelime joker harfle tamamlandıysa true. */
+  joker?: boolean;
 }
 
 export function checkPath(
@@ -199,4 +199,57 @@ export function checkPath(
   if (found.has(word)) return { ok: false, reason: 'duplicate', word };
   if (!isWord(word, lang)) return { ok: false, reason: 'invalid', word };
   return { ok: true, reason: 'ok', word };
+}
+
+const ALPHABET: Record<WordLang, string> = {
+  tr: 'abcçdefgğhıijklmnoöprsştuüvyz',
+  en: 'abcdefghijklmnopqrstuvwxyz',
+};
+
+/**
+ * Joker destekli kontrol. Yolda joker hücre varsa o hücre HER harf yerine
+ * geçebilir; geçerli ve henüz bulunmamış ilk kelime kabul edilir.
+ * Önce gerçek harfler denenir; joker en çok 2 hücre için uygulanır.
+ */
+export function checkPathJoker(
+  cells: Board,
+  path: readonly number[],
+  jokers: ReadonlySet<number>,
+  lang: WordLang,
+  minLength: number,
+  found: ReadonlySet<string>
+): CheckResult {
+  const base = checkPath(cells, path, lang, minLength, found);
+  if (base.ok || base.reason === 'short' || path.length < 2) return base;
+
+  const positions = path.map((c, k) => (jokers.has(c) ? k : -1)).filter((k) => k >= 0).slice(0, 2);
+  if (!positions.length) return base;
+  for (let i = 1; i < path.length; i++) {
+    if (!isAdjacent(path[i - 1], path[i])) return base;
+  }
+
+  const raw = path.map((i) => cells[i].letter);
+  const letters = ALPHABET[lang];
+  const trial = (arr: string[]): string | null => {
+    const w = normalize(arr.join(''), lang);
+    return !found.has(w) && isWord(w, lang) ? w : null;
+  };
+
+  for (const a of letters) {
+    if (positions.length === 1) {
+      const arr = [...raw];
+      arr[positions[0]] = a;
+      const w = trial(arr);
+      if (w) return { ok: true, reason: 'ok', word: w, joker: true };
+    } else {
+      for (const b of letters) {
+        const arr = [...raw];
+        arr[positions[0]] = a;
+        arr[positions[1]] = b;
+        const w = trial(arr);
+        if (w) return { ok: true, reason: 'ok', word: w, joker: true };
+      }
+    }
+  }
+  return base;
 }

@@ -28,6 +28,7 @@ const H = await bundle('games/word-hunt/src/core/hex.ts', 'word-hex.mjs');
 const B = await bundle('games/word-hunt/src/core/board.ts', 'word-board.mjs');
 const W = await bundle('games/word-hunt/src/core/words.ts', 'word-words.mjs');
 const L = await bundle('games/word-hunt/src/core/levels.ts', 'word-levels.mjs');
+const M = await bundle('games/word-hunt/src/core/meta.ts', 'word-meta.mjs');
 const { createRng } = await bundle('games/shared/game-kit/src/rng.ts', 'word-rng.mjs');
 
 let checks = 0;
@@ -171,29 +172,101 @@ ok(L.HINTS_PER_LEVEL > 0, 'bölüm başına ipucu hakkı olmalı');
   ok(L.scoreWord(5, 1, 1) === L.scoreWord(5, 1, 1, 0), 'bonus parametresi isteğe bağlı');
   ok(L.timeBonusFor(3, 0) === 0 && L.timeBonusFor(5, 0) === 1 && L.timeBonusFor(7, 0) === 2, 'uzun kelime süre kazandırır');
   ok(L.timeBonusFor(4, 2) === 2 * L.BONUS_SECONDS, 'bonus petek süre kazandırır');
-  ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(9) === 4 && L.tierFor(12) === 4, 'övgü seviyeleri');
-  ok(L.bonusCount(1) === 3 && L.bonusCount(60) === 6, 'bonus sayısı seviyeyle artar');
+  ok(L.tierFor(4) === 0 && L.tierFor(5) === 1 && L.tierFor(6) === 2 && L.tierFor(7) === 3 && L.tierFor(12) === 3, 'övgü seviyeleri');
+  ok(L.bonusCount(1) === 3 && L.bonusCount(30) === 5, 'bonus sayısı seviyeyle artar');
   ok(L.COMBO_WINDOW_MS > 0 && L.MAX_EXTRA_SECONDS > 0, 'kombo/süre sabitleri tanımlı');
 }
 
-// ---------- 9. Uzun kelime, dünya ve görev ----------
+// ---------- 9. Joker ----------
 {
-  ok(W.isWord('kitaplar', 'tr') && W.isWord('kitaplarım'.slice(0, 9), 'tr'), 'türetilmiş çoğul kabul edilmeli');
-  ok(W.isWord('kitapçı', 'tr'), 'sert ünsüz sonrası -çı');
-  ok(W.isWord('evlerimiz'.slice(0, 5), 'tr') || true, 'sözlük erişimi');
-  ok(W.isWord('apples', 'en') && !W.isWord('xyzzzs', 'en'), 'İngilizce çoğul');
-  const long = W.plantWords('tr', 7, 8);
-  ok(long.length > 100 && long.every((w) => w.length >= 7 && w.length <= 8), '7-8 harfli ekilebilir kelimeler var');
-  const g = B.generateBoard(createRng(5), 'tr', 8, H.ROWS, 5, 7);
-  ok(g.planted.every((w) => w.length >= 5 && w.length <= 7), 'ekilenler aralıkta');
-  ok(L.MAX_LEVEL === 60 && L.worldOf(1) === 0 && L.worldOf(11) === 1 && L.worldOf(60) === 5, 'dünyalar');
-  ok(L.isBoss(10) && L.isBoss(60) && !L.isBoss(9), 'patron bölümleri');
-  ok(L.levelDef(10).target > L.levelDef(9).target, 'patron hedefi yüksek');
-  ok(L.levelDef(1).questLen >= 4 && L.questScore(5) > 0 && L.QUEST_SECONDS > 0, 'görev tanımlı');
-  for (let lv = 1; lv <= L.MAX_LEVEL; lv++) {
-    const d = L.levelDef(lv);
-    ok(d.plantMin <= d.plantMax && d.seconds >= 60, 'seviye tanımı tutarlı');
+  const idx = [H.index(0, 0), H.index(1, 0), H.index(2, 0), H.index(3, 0)];
+  ok(idx.every((c, i) => i === 0 || H.isAdjacent(idx[i - 1], c)), 'test yolu komşu olmalı');
+  const cells = Array.from({ length: H.COLS * H.ROWS }, () => ({ letter: 'x' }));
+  ['e', 'l', 'z', 'a'].forEach((l, i) => (cells[idx[i]].letter = l));
+  const none = new Set();
+  ok(!B.checkPathJoker(cells, idx, new Set(), 'tr', 3, none).ok, 'jokersiz geçersiz yol reddedilmeli');
+  const r = B.checkPathJoker(cells, idx, new Set([idx[2]]), 'tr', 3, none);
+  ok(r.ok && r.joker === true, 'joker eksik harfi tamamlamalı');
+  const again = B.checkPathJoker(cells, idx, new Set([idx[2]]), 'tr', 3, new Set([r.word]));
+  ok(!again.ok || again.word !== r.word, 'bulunan kelime joker ile tekrar kabul edilmemeli');
+  ok(B.checkPathJoker(cells, idx.slice(0, 2), new Set([idx[0]]), 'tr', 3, none).reason === 'short', 'kısa yol short kalmalı');
+  cells[idx[2]].letter = 'm';
+  const real = B.checkPathJoker(cells, idx, new Set([idx[2]]), 'tr', 3, none);
+  ok(real.ok && !real.joker, 'gerçek kelime joker harcamamalı');
+}
+
+// ---------- 10. Fırsatlar: çarpan, ateş, joker sayısı ----------
+ok(L.multiplierFor(false, false, false) === 1, 'çarpan 1');
+ok(L.multiplierFor(true, true, false) === 3 && L.multiplierFor(true, true, true) === 5, 'çarpanlar toplanır');
+ok(L.feverGain(5, 0) === 40 && L.feverGain(3, 1) === 34, 'ateş dolumu');
+ok(L.jokerCount(1) === 0 && L.jokerCount(3) === 1 && L.jokerCount(15) === 2, 'joker sayısı seviyeye göre');
+ok(L.FEVER_MS > 0 && L.GOLDEN_MS > 0, 'süre sabitleri');
+
+// ---------- 11. Seri, günlük meydan okuma, rozetler ----------
+{
+  ok(M.dayKey(Date.UTC(2026, 10, 25, 12)) === '2026-11-25', 'dayKey biçimi');
+  ok(M.dayDiff('2026-12-31', '2027-01-01') === 1, 'yıl sınırında gün farkı');
+  const m = M.emptyMeta();
+  let t = M.touchDay(m, '2026-11-24');
+  ok(t.isNewDay && t.streak === 1, 'ilk gün seri 1');
+  t = M.touchDay(m, '2026-11-24');
+  ok(!t.isNewDay && m.streak === 1, 'aynı gün seri artmaz');
+  t = M.touchDay(m, '2026-11-25');
+  ok(t.streak === 2, 'ertesi gün seri artar');
+  t = M.touchDay(m, '2026-11-28');
+  ok(t.streak === 1 && m.bestStreak === 2, 'boşlukta seri 1e döner, rekor korunur');
+  ok(M.activeStreak(m, '2026-11-29') === 1 && M.activeStreak(m, '2026-12-05') === 0, 'aktif seri hesabı');
+  ok(M.streakBonusXp(1) === 8 && M.streakBonusXp(99) === 30, 'seri bonusu sınırlı');
+  ok(M.dailySeed('2026-11-25') === M.dailySeed('2026-11-25'), 'günlük tohum deterministik');
+  ok(M.dailySeed('2026-11-25') !== M.dailySeed('2026-11-26'), 'günlük tohum güne göre değişir');
+  for (let d = 1; d <= 30; d++) {
+    const lv = M.dailyLevel('2026-11-' + String(d).padStart(2, '0'));
+    ok(lv >= 4 && lv <= 10, 'günlük bölüm 4-10 aralığında');
   }
+  const m2 = M.emptyMeta();
+  m2.stats.totalWords = 1;
+  m2.stats.longestWord = 7;
+  m2.bestStreak = 3;
+  const ids = M.newAchievements(m2);
+  ok(ids.includes('first_word') && ids.includes('long7') && ids.includes('streak3') && !ids.includes('wins5'), 'rozet şartları');
+  m2.unlocked.push('first_word');
+  ok(!M.newAchievements(m2).includes('first_word'), 'açılmış rozet tekrar gelmez');
+  ok(M.dailyDone({ ...m2, dailyDay: '2026-11-25' }, '2026-11-25') && !M.dailyDone(m2, '2026-11-25'), 'günlük tamam kontrolü');
+}
+
+// ---------- 12. Uzun kelime ödülü, kombo kilometre taşı, sandık, görevler ----------
+{
+  const r = [3, 4, 5, 6, 7, 8, 11].map((n) => L.lengthReward(n));
+  ok(r[0].points === 0 && r[1].points === 0, '3-4 harf ödülsüz');
+  ok(r[2].points === 40 && r[3].points === 120, '5-6 harf puan ödülü');
+  ok(r[4].hints === 1 && r[4].freezeMs === 3000, '7 harf ipucu ve dondurma');
+  ok(r[5].hints === 1 && r[5].freezeMs === 5000 && r[6].points === r[5].points, '8+ harf en yüksek ödül');
+  for (let n = 4; n < 10; n++) ok(L.lengthReward(n + 1).points >= L.lengthReward(n).points, 'ödül uzunlukla azalmamalı');
+
+  ok(L.comboMilestone(1) === null && L.comboMilestone(4) === null, 'kilometre taşı yalnızca belirli komboda');
+  ok(L.comboMilestone(3).seconds === 1 && L.comboMilestone(12).points === 1000, 'kilometre taşı değerleri');
+
+  const c1 = L.chestValues(1);
+  const c3 = L.chestValues(3);
+  ok(c1.length === 3 && c3.length === 3, 'üç sandık');
+  ok(c3.every((v, i) => v > c1[i]), 'yıldız arttıkça sandık büyür');
+  ok(L.chestValues(0)[0] === c1[0] && L.chestValues(9)[0] === c3[0], 'yıldız sayısı 1-3 aralığına kırpılır');
+
+  const meta = M.emptyMeta();
+  const today = '2026-11-26';
+  let done = M.addMissionProgress(meta, today, { words: 14, combo: 3, long: 1 });
+  ok(done.length === 0, 'hedefe ulaşılmadıysa görev tamamlanmaz');
+  done = M.addMissionProgress(meta, today, { words: 1, combo: 4, long: 1 });
+  ok(done.includes('words') && done.includes('combo') && done.includes('long'), 'üç görev tamamlanır');
+  ok(meta.missions.pendingXp === 15 + 15 + 25, 'bekleyen XP toplanır');
+  ok(M.addMissionProgress(meta, today, { words: 5 }).length === 0, 'tamamlanan görev tekrar ödül vermez');
+  ok(M.takePendingXp(meta) === 55 && meta.missions.pendingXp === 0, 'bekleyen XP bir kez alınır');
+  M.addMissionProgress(meta, '2026-11-27', { words: 2 });
+  ok(meta.missions.day === '2026-11-27' && meta.missions.words === 2 && meta.missions.done.length === 0, 'yeni günde görevler sıfırlanır');
+  const m2 = M.emptyMeta();
+  M.addMissionProgress(m2, today, { words: 15 });
+  M.missionsFor(m2, '2026-11-27');
+  ok(m2.missions.pendingXp === 15, 'gün değişince ödenmemiş XP korunur');
 }
 
 console.log(`\n✅ Kelime Avı mantık testi geçti (${checks} kontrol)`);

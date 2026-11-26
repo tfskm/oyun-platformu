@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { HEX_SIZE, WORLDS } from '../theme.js';
+import { HEX_SIZE } from '../theme.js';
 
 /**
  * Görseller kodla üretilir — asset dosyası yok.
@@ -56,6 +56,15 @@ const STYLES: Record<string, HexStyle> = {
     rimLight: 0xffffff,
     rimDark: 0xb4761a,
   },
+  hexJoker: {
+    shadow: 0x1f0414,
+    wallDark: 0x4a0d33,
+    wall: 0xb0306e,
+    faceEdge: 0xc4417f,
+    faceCenter: 0xffa6d2,
+    rimLight: 0xffe1f0,
+    rimDark: 0x7a1d4d,
+  },
   hexBonus: {
     shadow: 0x12041f,
     wallDark: 0x25093f,
@@ -89,10 +98,6 @@ export class BootScene extends Phaser.Scene {
 
   private buildHexes(): void {
     for (const [key, style] of Object.entries(STYLES)) this.bevelHex(key, style);
-    // Dünya temaları: hex1..hex5 (hex = dünya 0)
-    WORLDS.forEach((w, i) => {
-      if (i > 0) this.bevelHex(`hex${i}`, { shadow: 0x02070f, ...w.face });
-    });
   }
 
   private bevelHex(key: string, p: HexStyle): void {
